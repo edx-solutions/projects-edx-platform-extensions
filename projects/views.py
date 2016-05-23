@@ -13,7 +13,7 @@ from rest_framework.response import Response
 from courseware.models import StudentModule
 from openedx.core.djangoapps.course_groups.models import CourseCohort
 
-
+from api_manager.permissions import SecureModelViewSet
 from courseware import module_render
 from courseware.courses import get_course
 from courseware.model_data import FieldDataCache
@@ -313,7 +313,7 @@ class WorkgroupsViewSet(viewsets.ModelViewSet):
         return Response({}, status=status.HTTP_201_CREATED)
 
 
-class ProjectsViewSet(viewsets.ModelViewSet):
+class ProjectsViewSet(SecureModelViewSet):
     """
     Django Rest Framework ViewSet for the Project model.
     """
