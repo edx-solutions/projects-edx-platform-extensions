@@ -7,7 +7,7 @@ from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 from django.test import RequestFactory
 
-from api_manager.courseware_access import get_course
+from edx_solutions_api_integration.courseware_access import get_course
 from opaque_keys import InvalidKeyError
 from projects.models import Project, WorkgroupReview, WorkgroupSubmissionReview
 

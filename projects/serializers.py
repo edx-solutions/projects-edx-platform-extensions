@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 
 from rest_framework import serializers
 
-from api_manager.groups.serializers import GroupSerializer
+from edx_solutions_api_integration.groups.serializers import GroupSerializer
 from .models import Project, Workgroup, WorkgroupSubmission
 from .models import WorkgroupReview, WorkgroupSubmissionReview, WorkgroupPeerReview
 

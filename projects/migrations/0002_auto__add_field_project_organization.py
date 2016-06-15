@@ -10,7 +10,7 @@ class Migration(SchemaMigration):
     def forwards(self, orm):
         # Adding field 'Project.organization'
         db.add_column('projects_project', 'organization',
-                      self.gf('django.db.models.fields.related.ForeignKey')(blank=True, related_name='projects', null=True, on_delete=models.SET_NULL, to=orm['api_manager.Organization']),
+                      self.gf('django.db.models.fields.related.ForeignKey')(blank=True, related_name='projects', null=True, on_delete=models.SET_NULL, to=orm['edx_solutions_api_integration.Organization']),
                       keep_default=False)
 
     def backwards(self, orm):
@@ -18,7 +18,7 @@ class Migration(SchemaMigration):
         db.delete_column('projects_project', 'organization_id')
 
     models = {
-        'api_manager.organization': {
+        'edx_solutions_api_integration.organization': {
             'Meta': {'object_name': 'Organization'},
             'contact_email': ('django.db.models.fields.EmailField', [], {'max_length': '255', 'null': 'True', 'blank': 'True'}),
             'contact_name': ('django.db.models.fields.CharField', [], {'max_length': '255', 'null': 'True', 'blank': 'True'}),
@@ -74,7 +74,7 @@ class Migration(SchemaMigration):
             'created': ('model_utils.fields.AutoCreatedField', [], {'default': 'datetime.datetime.now'}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'modified': ('model_utils.fields.AutoLastModifiedField', [], {'default': 'datetime.datetime.now'}),
-            'organization': ('django.db.models.fields.related.ForeignKey', [], {'blank': 'True', 'related_name': "'projects'", 'null': 'True', 'on_delete': 'models.SET_NULL', 'to': "orm['api_manager.Organization']"})
+            'organization': ('django.db.models.fields.related.ForeignKey', [], {'blank': 'True', 'related_name': "'projects'", 'null': 'True', 'on_delete': 'models.SET_NULL', 'to': "orm['edx_solutions_api_integration.Organization']"})
         },
         'projects.workgroup': {
             'Meta': {'object_name': 'Workgroup'},
