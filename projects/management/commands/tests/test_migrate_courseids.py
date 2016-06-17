@@ -1,6 +1,6 @@
 """
 Run these tests @ Devstack:
-    rake fasttest_lms[common/djangoapps/api_manager/management/commands/tests/test_migrate_orgdata.py]
+    rake fasttest_lms[common/djangoapps/edx_solutions_api_integration/management/commands/tests/test_migrate_orgdata.py]
 """
 from datetime import datetime
 import uuid
@@ -9,7 +9,7 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.test.utils import override_settings
 
-from api_manager.management.commands import migrate_courseids
+from edx_solutions_api_integration.management.commands import migrate_courseids
 from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase, mixed_store_config
 from projects.models import Project, Workgroup, WorkgroupReview, WorkgroupSubmission, WorkgroupSubmissionReview
 from xmodule.modulestore.tests.factories import CourseFactory, ItemFactory

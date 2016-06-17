@@ -15,7 +15,7 @@ from django.core.cache import cache
 from django.test import Client
 from django.test.utils import override_settings
 
-from api_manager.models import GroupProfile
+from edx_solutions_api_integration.models import GroupProfile
 from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase, mixed_store_config
 from projects.models import Project, Workgroup
 from student.tests.factories import CourseEnrollmentFactory

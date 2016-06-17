@@ -1,6 +1,6 @@
 """
 Run these tests @ Devstack:
-    rake fasttest_lms[common/djangoapps/api_manager/management/commands/tests/test_migrate_orgdata.py]
+    rake fasttest_lms[common/djangoapps/edx_solutions_api_integration/management/commands/tests/test_migrate_orgdata.py]
 """
 from datetime import datetime
 import uuid
