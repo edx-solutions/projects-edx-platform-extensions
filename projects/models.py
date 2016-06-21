@@ -15,7 +15,7 @@ class Project(TimeStampedModel):
     course_id = models.CharField(max_length=255)
     content_id = models.CharField(max_length=255)
     organization = models.ForeignKey(
-        'organizations.Organization',
+        'edx_solutions_organizations.Organization',
         blank=True,
         null=True,
         related_name="projects",
