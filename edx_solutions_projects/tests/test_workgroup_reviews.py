@@ -1,8 +1,7 @@
 # pylint: disable=E1103
 
 """
-Run these tests @ Devstack:
-    rake fasttest_lms[common/djangoapps/projects/tests/test_workgroup_reviews.py]
+Run these tests: paver test_system -s lms -t edx_solutions_projects
 """
 import json
 import uuid
@@ -13,7 +12,7 @@ from django.core.cache import cache
 from django.test import Client
 from django.test.utils import override_settings
 
-from projects.models import Project, Workgroup, WorkgroupSubmission
+from edx_solutions_projects.models import Project, Workgroup, WorkgroupSubmission
 from student.models import anonymous_id_for_user
 from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase, mixed_store_config
 from xmodule.modulestore.tests.factories import CourseFactory, ItemFactory

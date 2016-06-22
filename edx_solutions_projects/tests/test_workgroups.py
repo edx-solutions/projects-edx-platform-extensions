@@ -1,8 +1,7 @@
 # pylint: disable=E1103
 
 """
-Run these tests @ Devstack:
-    rake fasttest_lms[common/djangoapps/projects/tests/test_workgroups.py]
+Run these tests: paver test_system -s lms -t edx_solutions_projects
 """
 from datetime import datetime
 import json
@@ -17,7 +16,7 @@ from django.test.utils import override_settings
 
 from edx_solutions_api_integration.models import GroupProfile
 from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase, mixed_store_config
-from projects.models import Project, Workgroup
+from edx_solutions_projects.models import Project, Workgroup
 from student.tests.factories import CourseEnrollmentFactory
 from xmodule.modulestore.tests.factories import CourseFactory, ItemFactory
 from openedx.core.djangoapps.course_groups.cohorts import (

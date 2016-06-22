@@ -9,9 +9,9 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.test.utils import override_settings
 
-from projects.management.commands import migrate_project_courseids
-from projects.models import Project, Workgroup, WorkgroupReview, WorkgroupSubmission, WorkgroupSubmissionReview
+from edx_solutions_api_integration.management.commands import migrate_courseids
 from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase, mixed_store_config
+from edx_solutions_projects.models import Project, Workgroup, WorkgroupReview, WorkgroupSubmission, WorkgroupSubmissionReview
 from xmodule.modulestore.tests.factories import CourseFactory, ItemFactory
 
 MODULESTORE_CONFIG = mixed_store_config(settings.COMMON_TEST_DATA_ROOT, {}, include_xml=False)
@@ -27,7 +27,7 @@ class MigrateCourseIdsTests(ModuleStoreTestCase):
         super(MigrateCourseIdsTests, self).setUp()
         self.course = CourseFactory.create(
             start=datetime(2014, 6, 16, 14, 30),
-            end=datetime(2020, 1, 16)
+            end=datetime(2015, 1, 16)
         )
         self.test_data = '<html>{}</html>'.format(str(uuid.uuid4()))
 
@@ -47,7 +47,7 @@ class MigrateCourseIdsTests(ModuleStoreTestCase):
         self.course2 = CourseFactory.create(
             org='TEST',
             start=datetime(2014, 6, 16, 14, 30),
-            end=datetime(2020, 1, 16)
+            end=datetime(2015, 1, 16)
         )
         self.chapter2 = ItemFactory.create(
             category="chapter",
@@ -60,7 +60,7 @@ class MigrateCourseIdsTests(ModuleStoreTestCase):
         self.new_style_course_id2 = unicode(self.course2.id)
         self.new_style_content_id2 = unicode(self.chapter2.location)
 
-    def test_migrate_project_courseids(self):
+    def test_migrate_courseids(self):
         """
         Test the data migration
         """
@@ -80,7 +80,7 @@ class MigrateCourseIdsTests(ModuleStoreTestCase):
         workgroup_submission_review2 = WorkgroupSubmissionReview.objects.create(submission=workgroup_submission2, content_id=self.new_style_content_id2)
 
         # Run the data migration
-        migrate_project_courseids.Command().handle()
+        migrate_courseids.Command().handle()
 
         # Confirm that the data has been properly migrated
         updated_project = Project.objects.get(id=project.id)

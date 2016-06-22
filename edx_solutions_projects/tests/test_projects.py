@@ -1,8 +1,7 @@
 # pylint: disable=E1103
 
 """
-Run these tests @ Devstack:
-    rake fasttest_lms[common/djangoapps/projects/tests/test_projects.py]
+Run these tests: paver test_system -s lms -t edx_solutions_projects
 """
 import json
 import uuid
@@ -13,8 +12,8 @@ from django.test import TestCase, Client
 from django.test.utils import override_settings
 from django.utils.http import urlencode
 
-from projects.models import Project, Workgroup
-from projects.scope_resolver import GroupProjectParticipantsScopeResolver
+from edx_solutions_projects.models import Project, Workgroup
+from edx_solutions_projects.scope_resolver import GroupProjectParticipantsScopeResolver
 
 
 TEST_API_KEY = str(uuid.uuid4())

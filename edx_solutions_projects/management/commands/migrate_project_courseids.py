@@ -9,7 +9,7 @@ from django.test import RequestFactory
 
 from edx_solutions_api_integration.courseware_access import get_course
 from opaque_keys import InvalidKeyError
-from projects.models import Project, WorkgroupReview, WorkgroupSubmissionReview
+from edx_solutions_projects.models import Project, WorkgroupReview, WorkgroupSubmissionReview
 
 log = logging.getLogger(__name__)
 

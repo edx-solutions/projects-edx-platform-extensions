@@ -1,7 +1,6 @@
 # pylint: disable=E1101
 """
-Run these tests @ Devstack:
-    paver test_system -s lms --test_id=lms/djangoapps/gradebook/tests.py
+Run these tests: paver test_system -s lms -t edx_solutions_projects
 """
 from datetime import datetime
 import uuid
@@ -13,7 +12,7 @@ from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase, mixed_st
 from xmodule.modulestore.tests.factories import CourseFactory, ItemFactory
 
 from util.signals import course_deleted
-from projects import models
+from edx_solutions_projects import models
 
 MODULESTORE_CONFIG = mixed_store_config(settings.COMMON_TEST_DATA_ROOT, {}, include_xml=False)
 
