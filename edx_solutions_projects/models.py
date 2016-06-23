@@ -98,7 +98,7 @@ class WorkgroupUser(models.Model):
     user = models.ForeignKey(User, null=False)
 
     class Meta:
-        db_table = 'projects_workgroup_users'
+        db_table = 'edx_solutions_projects_workgroup_users'
 
     def clean(self):
         # Ensure the user is not already assigned to a workgroup for this course

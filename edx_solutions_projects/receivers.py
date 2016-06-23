@@ -5,7 +5,7 @@ from django.dispatch import receiver
 
 from util.signals import course_deleted
 
-from projects import models
+from edx_solutions_projects import models
 
 
 @receiver(course_deleted)

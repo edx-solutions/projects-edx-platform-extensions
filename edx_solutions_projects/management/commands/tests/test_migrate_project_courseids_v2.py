@@ -7,8 +7,8 @@ from django.conf import settings
 from django.test.utils import override_settings
 
 from django.contrib.auth.models import User
-from projects.management.commands import migrate_project_courseids_v2
-from projects.models import Project, Workgroup, WorkgroupReview, WorkgroupPeerReview, WorkgroupSubmission, WorkgroupSubmissionReview
+from edx_solutions_projects.management.commands import migrate_project_courseids_v2
+from edx_solutions_projects.models import Project, Workgroup, WorkgroupReview, WorkgroupPeerReview, WorkgroupSubmission, WorkgroupSubmissionReview
 from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase, mixed_store_config
 
 

@@ -5,7 +5,7 @@ import logging
 
 from django.core.management.base import BaseCommand
 
-from projects.models import Project, WorkgroupReview, WorkgroupPeerReview, WorkgroupSubmissionReview
+from edx_solutions_projects.models import Project, WorkgroupReview, WorkgroupPeerReview, WorkgroupSubmissionReview
 
 log = logging.getLogger(__name__)
 
