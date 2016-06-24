@@ -22,18 +22,14 @@ class RenameProjectsAppTests(TestCase):
         self.old_appname = 'old_dummy_app'
         self.new_appname = 'new_dummy_app'
         self.table_names = [
-            'peerreview',
             'project',
-            'project_workgroups',
-            'submission',
-            'submissionreview',
             'workgroup',
             'workgroup_groups',
+            'workgroup_users',
             'workgrouppeerreview',
             'workgroupreview',
             'workgroupsubmission',
             'workgroupsubmissionreview',
-            'workgroup_users',
         ]
 
         self.old_app_migration_history = MigrationHistory.objects.create(

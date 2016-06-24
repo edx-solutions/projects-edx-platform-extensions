@@ -13,18 +13,14 @@ def get_table_names():
     Returns list of table name projects app has
     """
     return [
-        'peerreview',
         'project',
-        'project_workgroups',
-        'submission',
-        'submissionreview',
         'workgroup',
         'workgroup_groups',
+        'workgroup_users',
         'workgrouppeerreview',
         'workgroupreview',
         'workgroupsubmission',
         'workgroupsubmissionreview',
-        'workgroup_users',
     ]
 
 
