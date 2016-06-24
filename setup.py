@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='projects-edx-platform-extensions',
-    version='1.0.4',
+    version='1.0.5',
     description='Projects management extension for edX platform',
     long_description=open('README.rst').read(),
     author='edX',
