@@ -57,9 +57,9 @@ class RenameProjectsAppTests(TestCase):
 
         return table_name in tables
 
-    def test_rename_organizations_app(self):
+    def test_rename_projects_app(self):
         """
-        Test the organizations renaming
+        Test the projects app renaming
         """
         for table_name in self.table_names:
             self.assertEqual(
