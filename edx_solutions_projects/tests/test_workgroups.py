@@ -4,14 +4,12 @@
 Run these tests: paver test_system -s lms -t edx_solutions_projects
 """
 from datetime import datetime
-import json
 import uuid
 from urllib import urlencode
 
 from django.conf import settings
 from django.contrib.auth.models import Group, User
 from django.core.cache import cache
-from django.test import Client
 from django.test.utils import override_settings
 
 from edx_solutions_api_integration.models import GroupProfile
@@ -19,34 +17,21 @@ from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase, mixed_st
 from edx_solutions_projects.models import Project, Workgroup
 from student.tests.factories import CourseEnrollmentFactory
 from xmodule.modulestore.tests.factories import CourseFactory, ItemFactory
+from edx_solutions_api_integration.test_utils import (
+    APIClientMixin,
+    make_non_atomic,
+)
 from openedx.core.djangoapps.course_groups.cohorts import (
     get_cohort_by_name, remove_user_from_cohort,
     delete_empty_cohort, is_user_in_cohort, get_course_cohort_names
 )
 
 
-MODULESTORE_CONFIG = mixed_store_config(settings.COMMON_TEST_DATA_ROOT, {}, include_xml=False)
-TEST_API_KEY = str(uuid.uuid4())
-
-
-class SecureClient(Client):
-
-    """ Django test client using a "secure" connection. """
-
-    def __init__(self, *args, **kwargs):
-        kwargs = kwargs.copy()
-        kwargs.update({'SERVER_PORT': 443, 'wsgi.url_scheme': 'https'})
-        super(SecureClient, self).__init__(*args, **kwargs)
-
-    def delete_with_data(self, *args, **kwargs):
-        """ Construct a DELETE request that includes data."""
-        kwargs.update({'REQUEST_METHOD': 'DELETE'})
-        return super(SecureClient, self).put(*args, **kwargs)
+MODULESTORE_CONFIG = mixed_store_config(settings.COMMON_TEST_DATA_ROOT, {})
 
 
 @override_settings(MODULESTORE=MODULESTORE_CONFIG)
-@override_settings(EDX_API_KEY=TEST_API_KEY)
-class WorkgroupsApiTests(ModuleStoreTestCase):
+class WorkgroupsApiTests(ModuleStoreTestCase, APIClientMixin):
 
     """ Test suite for Users API views """
 
@@ -117,47 +102,9 @@ class WorkgroupsApiTests(ModuleStoreTestCase):
 
         CourseEnrollmentFactory.create(user=self.test_user, course_id=self.test_course.id)
         CourseEnrollmentFactory.create(user=self.test_user2, course_id=self.test_course.id)
-        self.client = SecureClient()
         cache.clear()
 
-    def do_post(self, uri, data):
-        """Submit an HTTP POST request"""
-        headers = {
-            'X-Edx-Api-Key': str(TEST_API_KEY),
-        }
-        json_data = json.dumps(data)
-
-        response = self.client.post(
-            uri, headers=headers, content_type='application/json', data=json_data)
-        return response
-
-    def do_get(self, uri):
-        """Submit an HTTP GET request"""
-        headers = {
-            'Content-Type': 'application/json',
-            'X-Edx-Api-Key': str(TEST_API_KEY),
-        }
-        response = self.client.get(uri, headers=headers)
-        return response
-
-    def do_delete(self, uri):
-        """Submit an HTTP DELETE request"""
-        headers = {
-            'Content-Type': 'application/json',
-            'X-Edx-Api-Key': str(TEST_API_KEY),
-        }
-        response = self.client.delete(uri, headers=headers)
-        return response
-
-    def do_delete_with_data(self, uri, data):
-        """Submit an HTTP DELETE request with payload """
-        headers = {
-            'Content-Type': 'application/json',
-            'X-Edx-Api-Key': str(TEST_API_KEY),
-        }
-        response = self.client.delete_with_data(uri, data, headers=headers)
-        return response
-
+    @make_non_atomic
     def test_workgroups_list_post(self):
         data = {
             'name': self.test_workgroup_name,
@@ -192,6 +139,7 @@ class WorkgroupsApiTests(ModuleStoreTestCase):
         cohort = get_cohort_by_name(self.test_course.id, cohort_name)
         self.assertIsNotNone(cohort)
 
+    @make_non_atomic
     def test_workgroups_detail_get(self):
         data = {
             'name': self.test_workgroup_name,
@@ -215,6 +163,7 @@ class WorkgroupsApiTests(ModuleStoreTestCase):
         self.assertIsNotNone(response.data['created'])
         self.assertIsNotNone(response.data['modified'])
 
+    @make_non_atomic
     def test_workgroups_groups_post(self):
         data = {
             'name': self.test_workgroup_name,
@@ -244,6 +193,7 @@ class WorkgroupsApiTests(ModuleStoreTestCase):
         self.assertEqual(response.data['groups'][1]['id'], test_groupnoprofile.id)
         self.assertEqual(response.data['groups'][1]['name'], test_groupnoprofile_name)
 
+    @make_non_atomic
     def test_workgroups_groups_get(self):
         data = {
             'name': self.test_workgroup_name,
@@ -261,6 +211,7 @@ class WorkgroupsApiTests(ModuleStoreTestCase):
         self.assertEqual(response.data[0]['id'], self.test_group.id)
         self.assertEqual(response.data[0]['name'], self.test_group.name)
 
+    @make_non_atomic
     def test_workgroups_users_post(self):
         data = {
             'name': self.test_workgroup_name,
@@ -287,6 +238,7 @@ class WorkgroupsApiTests(ModuleStoreTestCase):
         self.assertIsNotNone(cohort)
         self.assertTrue(is_user_in_cohort(cohort, self.test_user.id))
 
+    @make_non_atomic
     def test_workgroups_users_post_preexisting_workgroup(self):
         data = {
             'name': self.test_workgroup_name,
@@ -311,6 +263,7 @@ class WorkgroupsApiTests(ModuleStoreTestCase):
         response = self.do_post(users_uri, data)
         self.assertEqual(response.status_code, 400)
 
+    @make_non_atomic
     def test_workgroups_users_post_preexisting_project(self):
         data = {
             'name': self.test_workgroup_name,
@@ -339,6 +292,7 @@ class WorkgroupsApiTests(ModuleStoreTestCase):
         response = self.do_post(users_uri, data)
         self.assertEqual(response.status_code, 400)
 
+    @make_non_atomic
     def test_workgroups_users_post_with_cohort_backfill(self):
         """
         This test asserts a case where a workgroup was created before the existence of a cohorted discussion
@@ -388,6 +342,7 @@ class WorkgroupsApiTests(ModuleStoreTestCase):
         self.assertTrue(is_user_in_cohort(cohort, self.test_user.id))
         self.assertTrue(is_user_in_cohort(cohort, self.test_user2.id))
 
+    @make_non_atomic
     def test_workgroups_users_delete(self):
         data = {
             'name': self.test_workgroup_name,
@@ -408,7 +363,7 @@ class WorkgroupsApiTests(ModuleStoreTestCase):
 
         # test to delete a user from workgroup
         data = {"id": self.test_user.id}
-        response = self.do_delete_with_data(users_uri, data)
+        response = self.do_delete(users_uri, data)
         self.assertEqual(response.status_code, 204)
         response = self.do_get(test_workgroup_uri)
         self.assertEqual(response.status_code, 200)
@@ -416,9 +371,10 @@ class WorkgroupsApiTests(ModuleStoreTestCase):
 
         # test to delete an invalide user from workgroup
         data = {"id": '345345344'}
-        response = self.do_delete_with_data(users_uri, data)
+        response = self.do_delete(users_uri, data)
         self.assertEqual(response.status_code, 400)
 
+    @make_non_atomic
     def test_workgroups_users_get(self):
         data = {
             'name': self.test_workgroup_name,
@@ -437,6 +393,7 @@ class WorkgroupsApiTests(ModuleStoreTestCase):
         self.assertEqual(response.data[0]['username'], self.test_user.username)
         self.assertEqual(response.data[0]['email'], self.test_user.email)
 
+    @make_non_atomic
     def test_workgroups_peer_reviews_get(self):
         data = {
             'name': self.test_workgroup_name,
@@ -483,6 +440,7 @@ class WorkgroupsApiTests(ModuleStoreTestCase):
         self.assertEqual(response.data[0]['id'], pr1_id)
         self.assertEqual(response.data[0]['reviewer'], self.test_user.username)
 
+    @make_non_atomic
     def test_workgroups_workgroup_reviews_get(self):
         data = {
             'name': self.test_workgroup_name,
@@ -552,6 +510,7 @@ class WorkgroupsApiTests(ModuleStoreTestCase):
         self.assertEqual(response.data[0]['id'], submission_id)
         self.assertEqual(response.data[0]['user'], self.test_user.id)
 
+    @make_non_atomic
     def test_workgroups_grades_post(self):
         data = {
             'name': self.test_workgroup_name,
@@ -584,6 +543,7 @@ class WorkgroupsApiTests(ModuleStoreTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertGreater(len(response.data['grades']), 0)
 
+    @make_non_atomic
     def test_workgroups_grades_post_invalid_course(self):
         data = {
             'name': self.test_workgroup_name,
@@ -620,6 +580,7 @@ class WorkgroupsApiTests(ModuleStoreTestCase):
         response = self.do_post(grades_uri, grade_data)
         self.assertEqual(response.status_code, 400)
 
+    @make_non_atomic
     def test_workgroups_grades_post_invalid_course_content(self):
         data = {
             'name': self.test_workgroup_name,

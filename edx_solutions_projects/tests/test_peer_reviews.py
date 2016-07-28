@@ -3,37 +3,26 @@
 """
 Run these tests: paver test_system -s lms -t edx_solutions_projects
 """
-import json
 import uuid
 
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.cache import cache
-from django.test import Client
 from django.test.utils import override_settings
 
 from edx_solutions_projects.models import Project, Workgroup
 from student.models import anonymous_id_for_user
 from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase, mixed_store_config
 from xmodule.modulestore.tests.factories import CourseFactory, ItemFactory
+from edx_solutions_api_integration.test_utils import (
+    APIClientMixin,
+)
 
-TEST_API_KEY = str(uuid.uuid4())
-MODULESTORE_CONFIG = mixed_store_config(settings.COMMON_TEST_DATA_ROOT, {}, include_xml=False)
-
-
-class SecureClient(Client):
-
-    """ Django test client using a "secure" connection. """
-
-    def __init__(self, *args, **kwargs):
-        kwargs = kwargs.copy()
-        kwargs.update({'SERVER_PORT': 443, 'wsgi.url_scheme': 'https'})
-        super(SecureClient, self).__init__(*args, **kwargs)
+MODULESTORE_CONFIG = mixed_store_config(settings.COMMON_TEST_DATA_ROOT, {})
 
 
 @override_settings(MODULESTORE=MODULESTORE_CONFIG)
-@override_settings(EDX_API_KEY=TEST_API_KEY)
-class PeerReviewsApiTests(ModuleStoreTestCase):
+class PeerReviewsApiTests(ModuleStoreTestCase, APIClientMixin):
 
     """ Test suite for Users API views """
 
@@ -88,37 +77,7 @@ class PeerReviewsApiTests(ModuleStoreTestCase):
         self.test_workgroup.add_user(self.test_peer_user)
         self.test_workgroup.save()
 
-        self.client = SecureClient()
         cache.clear()
-
-    def do_post(self, uri, data):
-        """Submit an HTTP POST request"""
-        headers = {
-            'X-Edx-Api-Key': str(TEST_API_KEY),
-        }
-        json_data = json.dumps(data)
-
-        response = self.client.post(
-            uri, headers=headers, content_type='application/json', data=json_data)
-        return response
-
-    def do_get(self, uri):
-        """Submit an HTTP GET request"""
-        headers = {
-            'Content-Type': 'application/json',
-            'X-Edx-Api-Key': str(TEST_API_KEY),
-        }
-        response = self.client.get(uri, headers=headers)
-        return response
-
-    def do_delete(self, uri):
-        """Submit an HTTP DELETE request"""
-        headers = {
-            'Content-Type': 'application/json',
-            'X-Edx-Api-Key': str(TEST_API_KEY),
-        }
-        response = self.client.delete(uri, headers=headers)
-        return response
 
     def test_peer_reviews_list_post(self):
         data = {
@@ -182,7 +141,7 @@ class PeerReviewsApiTests(ModuleStoreTestCase):
 
         response = self.do_get(self.test_peer_reviews_uri)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.data), 2)
+        self.assertEqual(len(response.data['results']), 2)
 
     def test_peer_reviews_detail_get(self):
         data = {

@@ -2,11 +2,12 @@
 # pylint: disable=W0613
 
 """ WORKGROUPS API VIEWS """
+from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import Group, User
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 
 from rest_framework import viewsets
-from rest_framework.decorators import action, link
+from rest_framework.decorators import detail_route
 from rest_framework import status
 from rest_framework.response import Response
 
@@ -96,7 +97,7 @@ class GroupViewSet(viewsets.ModelViewSet):
     Django Rest Framework ViewSet for the Group model (auth_group).
     """
     serializer_class = GroupSerializer
-    model = Group
+    queryset = Group.objects.all()
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -104,7 +105,7 @@ class UserViewSet(viewsets.ModelViewSet):
     Django Rest Framework ViewSet for the User model (auth_user).
     """
     serializer_class = UserSerializer
-    model = User
+    queryset = User.objects.all()
 
 
 class WorkgroupsViewSet(viewsets.ModelViewSet):
@@ -112,26 +113,26 @@ class WorkgroupsViewSet(viewsets.ModelViewSet):
     Django Rest Framework ViewSet for the Workgroup model.
     """
     serializer_class = WorkgroupSerializer
-    model = Workgroup
+    queryset = Workgroup.objects.all()
 
     def create(self, request):
         """
         Create a new workgroup and its cohort.
         """
-        assignment_type = request.DATA.get('assignment_type', CourseCohort.RANDOM)
+        assignment_type = request.data.get('assignment_type', CourseCohort.RANDOM)
         if assignment_type not in dict(CourseCohort.ASSIGNMENT_TYPE_CHOICES).keys():
             message = "Not a valid assignment type, '{}'".format(assignment_type)
             return Response({'details': message}, status.HTTP_400_BAD_REQUEST)
         response = super(WorkgroupsViewSet, self).create(request)
         if response.status_code == status.HTTP_201_CREATED:
             # create the workgroup cohort
-            workgroup = self.object
+            workgroup = get_object_or_404(self.queryset, pk=response.data['id'])
             course_descriptor, course_key, course_content = _get_course(self.request, self.request.user, workgroup.project.course_id)  # pylint: disable=W0612
             add_cohort(course_key, workgroup.cohort_name, assignment_type)
 
         return response
 
-    @action(methods=['get', 'post'])
+    @detail_route(methods=['get', 'post'])
     def groups(self, request, pk):
         """
         Add a Group to a Workgroup
@@ -141,11 +142,11 @@ class WorkgroupsViewSet(viewsets.ModelViewSet):
             response_data = []
             if groups:
                 for group in groups:
-                    serializer = GroupSerializer(group)
+                    serializer = GroupSerializer(group, context={'request': request})
                     response_data.append(serializer.data)  # pylint: disable=E1101
             return Response(response_data, status=status.HTTP_200_OK)
         else:
-            group_id = request.DATA.get('id')
+            group_id = request.data.get('id')
             try:
                 group = Group.objects.get(id=group_id)
             except ObjectDoesNotExist:
@@ -156,7 +157,7 @@ class WorkgroupsViewSet(viewsets.ModelViewSet):
             workgroup.save()
             return Response({}, status=status.HTTP_201_CREATED)
 
-    @action(methods=['get', 'post', 'delete'])
+    @detail_route(methods=['get', 'post', 'delete'])
     def users(self, request, pk):
         """
         Add a User to a Workgroup
@@ -166,11 +167,11 @@ class WorkgroupsViewSet(viewsets.ModelViewSet):
             response_data = []
             if users:
                 for user in users:
-                    serializer = UserSerializer(user)
+                    serializer = UserSerializer(user, context={'request': request})
                     response_data.append(serializer.data)  # pylint: disable=E1101
             return Response(response_data, status=status.HTTP_200_OK)
         elif request.method == 'POST':
-            user_id = request.DATA.get('id')
+            user_id = request.data.get('id')
             try:
                 user = User.objects.get(id=user_id)
             except ObjectDoesNotExist:
@@ -201,7 +202,7 @@ class WorkgroupsViewSet(viewsets.ModelViewSet):
             except ObjectDoesNotExist:
                 # This use case handles cases where a workgroup might have been created before
                 # the notion of a cohorted discussion. So we need to backfill in the data
-                assignment_type = request.DATA.get('assignment_type', CourseCohort.RANDOM)
+                assignment_type = request.data.get('assignment_type', CourseCohort.RANDOM)
                 if assignment_type not in dict(CourseCohort.ASSIGNMENT_TYPE_CHOICES).keys():
                     message = "Not a valid assignment type, '{}'".format(assignment_type)
                     return Response({"detail": message}, status.HTTP_400_BAD_REQUEST)
@@ -210,7 +211,7 @@ class WorkgroupsViewSet(viewsets.ModelViewSet):
                     add_user_to_cohort(cohort, workgroup_user.username)
             return Response({}, status=status.HTTP_201_CREATED)
         else:
-            user_id = request.DATA.get('id')
+            user_id = request.data.get('id')
             try:
                 user = User.objects.get(id=user_id)
             except ObjectDoesNotExist:
@@ -224,40 +225,40 @@ class WorkgroupsViewSet(viewsets.ModelViewSet):
             remove_user_from_cohort(cohort, user.username)
             return Response({}, status=status.HTTP_204_NO_CONTENT)
 
-    @link()
+    @detail_route(methods=['get'])
     def peer_reviews(self, request, pk):
         """
         View Peer Reviews for a specific Workgroup
         """
         peer_reviews = WorkgroupPeerReview.objects.filter(workgroup=pk)
-        content_id = self.request.QUERY_PARAMS.get('content_id', None)
+        content_id = self.request.query_params.get('content_id', None)
         if content_id is not None:
             peer_reviews = peer_reviews.filter(content_id=content_id)
         response_data = []
         if peer_reviews:
             for peer_review in peer_reviews:
-                serializer = WorkgroupPeerReviewSerializer(peer_review)
+                serializer = WorkgroupPeerReviewSerializer(peer_review, context={'request': request})
                 response_data.append(serializer.data)  # pylint: disable=E1101
         return Response(response_data, status=status.HTTP_200_OK)
 
-    @link()
+    @detail_route(methods=['get'])
     def workgroup_reviews(self, request, pk):
         """
         View Workgroup Reviews for a specific Workgroup
         """
         workgroup_reviews = WorkgroupReview.objects.filter(workgroup=pk)
-        content_id = self.request.QUERY_PARAMS.get('content_id', None)
+        content_id = self.request.query_params.get('content_id', None)
         if content_id is not None:
             workgroup_reviews = workgroup_reviews.filter(content_id=content_id)
 
         response_data = []
         if workgroup_reviews:
             for workgroup_review in workgroup_reviews:
-                serializer = WorkgroupReviewSerializer(workgroup_review)
+                serializer = WorkgroupReviewSerializer(workgroup_review, context={'request': request})
                 response_data.append(serializer.data)  # pylint: disable=E1101
         return Response(response_data, status=status.HTTP_200_OK)
 
-    @link()
+    @detail_route(methods=['get'])
     def submissions(self, request, pk):
         """
         View Submissions for a specific Workgroup
@@ -266,35 +267,35 @@ class WorkgroupsViewSet(viewsets.ModelViewSet):
         response_data = []
         if submissions:
             for submission in submissions:
-                serializer = WorkgroupSubmissionSerializer(submission)
+                serializer = WorkgroupSubmissionSerializer(submission, context={'request': request})
                 response_data.append(serializer.data)  # pylint: disable=E1101
         return Response(response_data, status=status.HTTP_200_OK)
 
-    @action()
+    @detail_route(methods=['post'])
     def grades(self, request, pk):
         """
         Submit a grade for a Workgroup.  The grade will be applied to all members of the workgroup
         """
         # Ensure we received all of the necessary information
-        course_id = request.DATA.get('course_id')
+        course_id = request.data.get('course_id')
         if course_id is None:
             return Response({}, status=status.HTTP_400_BAD_REQUEST)
         course_descriptor, course_key, course_content = _get_course(request, request.user, course_id)  # pylint: disable=W0612
         if not course_descriptor:
             return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
-        content_id = request.DATA.get('content_id')
+        content_id = request.data.get('content_id')
         if content_id is None:
             return Response({}, status=status.HTTP_400_BAD_REQUEST)
         content_descriptor, content_key, content = _get_course_child(request, request.user, course_key, content_id)  # pylint: disable=W0612
         if content_descriptor is None:
             return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
-        grade = request.DATA.get('grade')
+        grade = request.data.get('grade')
         if grade is None:
             return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
-        max_grade = request.DATA.get('max_grade')
+        max_grade = request.data.get('max_grade')
         if max_grade is None:
             return Response({}, status=status.HTTP_400_BAD_REQUEST)
         if grade > max_grade:
@@ -317,14 +318,16 @@ class ProjectsViewSet(SecureModelViewSet):
     """
     Django Rest Framework ViewSet for the Project model.
     """
+    serializer_class = ProjectSerializer
+    queryset = Project.objects.all()
 
     def list(self, request, *args, **kwargs):
         """
         GET /api/projects/
         Returns list of projects, optionally filtered by course ID and content ID (simultaneously)
         """
-        target_course_id = self.request.QUERY_PARAMS.get('course_id')
-        target_content_id = self.request.QUERY_PARAMS.get('content_id')
+        target_course_id = self.request.query_params.get('course_id')
+        target_content_id = self.request.query_params.get('content_id')
         has_target_course, has_target_content = bool(target_course_id), bool(target_content_id)
 
         if has_target_course != has_target_content:
@@ -333,24 +336,21 @@ class ProjectsViewSet(SecureModelViewSet):
 
         return super(ProjectsViewSet, self).list(request, *args, **kwargs)
 
-    serializer_class = ProjectSerializer
-    model = Project
-
     def get_queryset(self):
         """
         Returns queryset optionally filtered by course_id and content_id
         """
-        target_course_id = self.request.QUERY_PARAMS.get('course_id')
-        target_content_id = self.request.QUERY_PARAMS.get('content_id')
+        target_course_id = self.request.query_params.get('course_id')
+        target_content_id = self.request.query_params.get('content_id')
 
-        queryset = self.model.objects.all()
+        queryset = self.queryset
 
         if target_content_id:
             queryset = queryset.filter(content_id=target_content_id, course_id=target_course_id)
 
         return queryset
 
-    @action(methods=['get', 'post'])
+    @detail_route(methods=['get', 'post'])
     def workgroups(self, request, pk):
         """
         Add a Workgroup to a Project
@@ -360,11 +360,11 @@ class ProjectsViewSet(SecureModelViewSet):
             response_data = []
             if workgroups:
                 for workgroup in workgroups:
-                    serializer = WorkgroupSerializer(workgroup)
+                    serializer = WorkgroupSerializer(workgroup, context={'request': request})
                     response_data.append(serializer.data)  # pylint: disable=E1101
             return Response(response_data, status=status.HTTP_200_OK)
         else:
-            workgroup_id = request.DATA.get('id')
+            workgroup_id = request.data.get('id')
             try:
                 workgroup = Workgroup.objects.get(id=workgroup_id)
             except ObjectDoesNotExist:
@@ -381,7 +381,7 @@ class WorkgroupSubmissionsViewSet(viewsets.ModelViewSet):
     Django Rest Framework ViewSet for the Submission model.
     """
     serializer_class = WorkgroupSubmissionSerializer
-    model = WorkgroupSubmission
+    queryset = WorkgroupSubmission.objects.all()
 
 
 class WorkgroupReviewsViewSet(viewsets.ModelViewSet):
@@ -389,7 +389,7 @@ class WorkgroupReviewsViewSet(viewsets.ModelViewSet):
     Django Rest Framework ViewSet for the ProjectReview model.
     """
     serializer_class = WorkgroupReviewSerializer
-    model = WorkgroupReview
+    queryset = WorkgroupReview.objects.all()
 
 
 class WorkgroupSubmissionReviewsViewSet(viewsets.ModelViewSet):
@@ -397,7 +397,7 @@ class WorkgroupSubmissionReviewsViewSet(viewsets.ModelViewSet):
     Django Rest Framework ViewSet for the SubmissionReview model.
     """
     serializer_class = WorkgroupSubmissionReviewSerializer
-    model = WorkgroupSubmissionReview
+    queryset = WorkgroupSubmissionReview.objects.all()
 
 
 class WorkgroupPeerReviewsViewSet(viewsets.ModelViewSet):
@@ -405,4 +405,4 @@ class WorkgroupPeerReviewsViewSet(viewsets.ModelViewSet):
     Django Rest Framework ViewSet for the PeerReview model.
     """
     serializer_class = WorkgroupPeerReviewSerializer
-    model = WorkgroupPeerReview
+    queryset = WorkgroupPeerReview.objects.all()

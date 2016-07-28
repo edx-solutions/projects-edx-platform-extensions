@@ -3,31 +3,17 @@
 """
 Run these tests: paver test_system -s lms -t edx_solutions_projects
 """
-import json
-import uuid
-
 from django.contrib.auth.models import User
 from django.core.cache import cache
-from django.test import TestCase, Client
-from django.test.utils import override_settings
+from django.test import TestCase
 
 from edx_solutions_projects.models import Project, Workgroup
-
-TEST_API_KEY = str(uuid.uuid4())
-
-
-class SecureClient(Client):
-
-    """ Django test client using a "secure" connection. """
-
-    def __init__(self, *args, **kwargs):
-        kwargs = kwargs.copy()
-        kwargs.update({'SERVER_PORT': 443, 'wsgi.url_scheme': 'https'})
-        super(SecureClient, self).__init__(*args, **kwargs)
+from edx_solutions_api_integration.test_utils import (
+    APIClientMixin,
+)
 
 
-@override_settings(EDX_API_KEY=TEST_API_KEY)
-class SubmissionsApiTests(TestCase):
+class SubmissionsApiTests(TestCase, APIClientMixin):
 
     """ Test suite for Users API views """
 
@@ -67,37 +53,7 @@ class SubmissionsApiTests(TestCase):
         self.test_workgroup.add_user(self.test_user)
         self.test_workgroup.save()
 
-        self.client = SecureClient()
         cache.clear()
-
-    def do_post(self, uri, data):
-        """Submit an HTTP POST request"""
-        headers = {
-            'X-Edx-Api-Key': str(TEST_API_KEY),
-        }
-        json_data = json.dumps(data)
-
-        response = self.client.post(
-            uri, headers=headers, content_type='application/json', data=json_data)
-        return response
-
-    def do_get(self, uri):
-        """Submit an HTTP GET request"""
-        headers = {
-            'Content-Type': 'application/json',
-            'X-Edx-Api-Key': str(TEST_API_KEY),
-        }
-        response = self.client.get(uri, headers=headers)
-        return response
-
-    def do_delete(self, uri):
-        """Submit an HTTP DELETE request"""
-        headers = {
-            'Content-Type': 'application/json',
-            'X-Edx-Api-Key': str(TEST_API_KEY),
-        }
-        response = self.client.delete(uri, headers=headers)
-        return response
 
     def test_submissions_list_post(self):
         submission_data = {

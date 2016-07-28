@@ -5,6 +5,7 @@ from django.contrib.auth.models import User
 from rest_framework import serializers
 
 from edx_solutions_api_integration.groups.serializers import GroupSerializer
+from edx_solutions_organizations.models import Organization
 from .models import Project, Workgroup, WorkgroupSubmission
 from .models import WorkgroupReview, WorkgroupSubmissionReview, WorkgroupPeerReview
 
@@ -34,8 +35,21 @@ class GradeSerializer(serializers.Serializer):
 
 class ProjectSerializer(serializers.HyperlinkedModelSerializer):
     """ Serializer for model interactions """
-    workgroups = serializers.PrimaryKeyRelatedField(many=True, required=False)
-    organization = serializers.PrimaryKeyRelatedField(required=False)
+    workgroups = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Workgroup.objects.all())
+    organization = serializers.PrimaryKeyRelatedField(required=False, queryset=Organization.objects.all())
+
+    def validate(self, data):
+        """
+        Custom validation for projects model.
+        we have to write custom validation because DRF makes
+        all fields in unique together to be required. However we
+        want organization as optional field.
+        """
+        if not data.get('course_id', None):
+            raise serializers.ValidationError('course_id field is required.')
+        if not data.get('content_id', None):
+            raise serializers.ValidationError('content_id field is required.')
+        return data
 
     class Meta:
         """ Meta class for defining additional serializer characteristics """
@@ -44,13 +58,14 @@ class ProjectSerializer(serializers.HyperlinkedModelSerializer):
             'id', 'url', 'created', 'modified', 'course_id', 'content_id',
             'organization', 'workgroups'
         )
+        validators = []
 
 
 class WorkgroupSubmissionSerializer(serializers.HyperlinkedModelSerializer):
     """ Serializer for model interactions """
-    user = serializers.PrimaryKeyRelatedField(required=True)
-    workgroup = serializers.PrimaryKeyRelatedField(required=True)
-    reviews = serializers.PrimaryKeyRelatedField(many=True, required=False)
+    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    workgroup = serializers.PrimaryKeyRelatedField(queryset=Workgroup.objects.all())
+    reviews = serializers.PrimaryKeyRelatedField(many=True, queryset=WorkgroupReview.objects.all(), required=False)
 
     class Meta:
         """ Meta class for defining additional serializer characteristics """
@@ -64,7 +79,7 @@ class WorkgroupSubmissionSerializer(serializers.HyperlinkedModelSerializer):
 
 class WorkgroupReviewSerializer(serializers.HyperlinkedModelSerializer):
     """ Serializer for model interactions """
-    workgroup = serializers.PrimaryKeyRelatedField(required=True)
+    workgroup = serializers.PrimaryKeyRelatedField(queryset=Workgroup.objects.all())
 
     class Meta:
         """ Meta class for defining additional serializer characteristics """
@@ -77,7 +92,7 @@ class WorkgroupReviewSerializer(serializers.HyperlinkedModelSerializer):
 
 class WorkgroupSubmissionReviewSerializer(serializers.HyperlinkedModelSerializer):
     """ Serializer for model interactions """
-    submission = serializers.PrimaryKeyRelatedField(required=True, queryset=WorkgroupSubmission.objects.all())
+    submission = serializers.PrimaryKeyRelatedField(queryset=WorkgroupSubmission.objects.all())
 
     class Meta:
         """ Meta class for defining additional serializer characteristics """
@@ -90,8 +105,8 @@ class WorkgroupSubmissionReviewSerializer(serializers.HyperlinkedModelSerializer
 
 class WorkgroupPeerReviewSerializer(serializers.HyperlinkedModelSerializer):
     """ Serializer for model interactions """
-    workgroup = serializers.PrimaryKeyRelatedField(required=True)
-    user = serializers.PrimaryKeyRelatedField(required=True)
+    workgroup = serializers.PrimaryKeyRelatedField(queryset=Workgroup.objects.all())
+    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
 
     class Meta:
         """ Meta class for defining additional serializer characteristics """
@@ -104,12 +119,12 @@ class WorkgroupPeerReviewSerializer(serializers.HyperlinkedModelSerializer):
 
 class WorkgroupSerializer(serializers.HyperlinkedModelSerializer):
     """ Serializer for model interactions """
-    project = serializers.PrimaryKeyRelatedField(required=True)
+    project = serializers.PrimaryKeyRelatedField(queryset=Project.objects.all())
     groups = GroupSerializer(many=True, required=False)
     users = ExtendedUserSerializer(many=True, required=False)
-    submissions = serializers.PrimaryKeyRelatedField(many=True, required=False)
-    workgroup_reviews = serializers.PrimaryKeyRelatedField(many=True, required=False)
-    peer_reviews = serializers.PrimaryKeyRelatedField(many=True, required=False)
+    submissions = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=WorkgroupSubmission.objects.all())
+    workgroup_reviews = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=WorkgroupReview.objects.all())
+    peer_reviews = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=WorkgroupPeerReview.objects.all())
 
     class Meta:
         """ Meta class for defining additional serializer characteristics """
