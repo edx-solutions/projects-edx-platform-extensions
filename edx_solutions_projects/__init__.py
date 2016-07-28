@@ -1,4 +1,4 @@
 """
 Initialization module for edx_solutions_projects djangoapp
 """
-import edx_solutions_projects.receivers
+default_app_config = 'edx_solutions_projects.apps.SolutionsAppProjectsConfig'

@@ -3,36 +3,20 @@
 """
 Run these tests: paver test_system -s lms -t edx_solutions_projects
 """
-import json
 import uuid
 
 from django.contrib.auth.models import User
 from django.core.cache import cache
-from django.test import TestCase, Client
-from django.test.utils import override_settings
-from django.utils.http import urlencode
+from django.test import TestCase
 
 from edx_solutions_projects.models import Project, Workgroup
 from edx_solutions_projects.scope_resolver import GroupProjectParticipantsScopeResolver
+from edx_solutions_api_integration.test_utils import APIClientMixin
 
 
-TEST_API_KEY = str(uuid.uuid4())
+class ProjectsApiTests(TestCase, APIClientMixin):
 
-
-class SecureClient(Client):
-
-    """ Django test client using a "secure" connection. """
-
-    def __init__(self, *args, **kwargs):
-        kwargs = kwargs.copy()
-        kwargs.update({'SERVER_PORT': 443, 'wsgi.url_scheme': 'https'})
-        super(SecureClient, self).__init__(*args, **kwargs)
-
-
-@override_settings(EDX_API_KEY=TEST_API_KEY)
-class ProjectsApiTests(TestCase):
-
-    """ Test suite for Users API views """
+    """ Test suite for Projects API views """
 
     def setUp(self):
         super(ProjectsApiTests, self).setUp()
@@ -83,44 +67,12 @@ class ProjectsApiTests(TestCase):
         self.test_workgroup2.add_user(self.test_user2)
         self.test_workgroup2.save()
 
-        self.client = SecureClient()
         cache.clear()
-
-    def do_post(self, uri, data):
-        """Submit an HTTP POST request"""
-        headers = {
-            'X-Edx-Api-Key': str(TEST_API_KEY),
-        }
-        json_data = json.dumps(data)
-
-        response = self.client.post(
-            uri, headers=headers, content_type='application/json', data=json_data)
-        return response
-
-    def do_get(self, uri, query_parameters=None):
-        """Submit an HTTP GET request"""
-        headers = {
-            'Content-Type': 'application/json',
-            'X-Edx-Api-Key': str(TEST_API_KEY),
-        }
-        if query_parameters:
-            uri += "?" + urlencode(query_parameters)
-        response = self.client.get(uri, headers=headers)
-        return response
-
-    def do_delete(self, uri):
-        """Submit an HTTP DELETE request"""
-        headers = {
-            'Content-Type': 'application/json',
-            'X-Edx-Api-Key': str(TEST_API_KEY),
-        }
-        response = self.client.delete(uri, headers=headers)
-        return response
 
     def test_projects_list_get(self):
         """ Tests simple GET request - should return all projects """
         response = self.do_get(self.test_projects_uri)
-        projects = response.data
+        projects = response.data['results']
         self.assertEqual(len(projects), 2)
         project1, project2 = projects[0], projects[1]
         self.assertEqual(project1['id'], self.test_project.id)
@@ -134,18 +86,18 @@ class ProjectsApiTests(TestCase):
     def test_projects_list_get_filter_by_content_id(self):
         """ Tests GET request with specified content_id - should return single project with matching content_id """
         filter1 = {'course_id': self.test_project.course_id, 'content_id': self.test_project.content_id}
-        response = self.do_get(self.test_projects_uri, filter1)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]['id'], self.test_project.id)
-        self.assertEqual(response.data[0]['content_id'], self.test_project.content_id)
-        self.assertEqual(response.data[0]['course_id'], self.test_project.course_id)
+        response = self.do_get(self.test_projects_uri, query_parameters=filter1)
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['results'][0]['id'], self.test_project.id)
+        self.assertEqual(response.data['results'][0]['content_id'], self.test_project.content_id)
+        self.assertEqual(response.data['results'][0]['course_id'], self.test_project.course_id)
 
         filter2 = {'course_id': self.test_project2.course_id, 'content_id': self.test_project2.content_id}
-        response = self.do_get(self.test_projects_uri, filter2)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]['id'], self.test_project2.id)
-        self.assertEqual(response.data[0]['content_id'], self.test_project2.content_id)
-        self.assertEqual(response.data[0]['course_id'], self.test_project2.course_id)
+        response = self.do_get(self.test_projects_uri, query_parameters=filter2)
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['results'][0]['id'], self.test_project2.id)
+        self.assertEqual(response.data['results'][0]['content_id'], self.test_project2.content_id)
+        self.assertEqual(response.data['results'][0]['course_id'], self.test_project2.course_id)
 
     def test_projects_list_incorrect_filter_request(self):
         """ Tests that GET requests with invalid filter returns BAD REQUEST response """
@@ -154,13 +106,21 @@ class ProjectsApiTests(TestCase):
             self.assertEqual(response.status_code, 400)
             self.assertIn("detail", response.data)
 
-        assert_request_failed(self.do_get(self.test_projects_uri, {'course_id': self.test_project.course_id}))
-        assert_request_failed(self.do_get(self.test_projects_uri, {'content_id': self.test_project.content_id}))
         assert_request_failed(
-            self.do_get(self.test_projects_uri, {'content_id': "", 'course_id': self.test_project.course_id})
+            self.do_get(self.test_projects_uri, query_parameters={'course_id': self.test_project.course_id})
         )
         assert_request_failed(
-            self.do_get(self.test_projects_uri, {'content_id': self.test_project.content_id, 'course_id': ""})
+            self.do_get(self.test_projects_uri, query_parameters={'content_id': self.test_project.content_id})
+        )
+        assert_request_failed(
+            self.do_get(
+                self.test_projects_uri, query_parameters={'content_id': "", 'course_id': self.test_project.course_id}
+            )
+        )
+        assert_request_failed(
+            self.do_get(
+                self.test_projects_uri, query_parameters={'content_id': self.test_project.content_id, 'course_id': ""}
+            )
         )
 
     def test_projects_list_post(self):
@@ -200,7 +160,6 @@ class ProjectsApiTests(TestCase):
             'name': self.test_project_name,
             'course_id': self.test_course_id,
             'content_id': test_course_content_id,
-            'organization': None
         }
         response = self.do_post(self.test_projects_uri, data)
         self.assertEqual(response.status_code, 201)
