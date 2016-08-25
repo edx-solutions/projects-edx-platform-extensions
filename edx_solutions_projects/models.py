@@ -50,8 +50,8 @@ class Workgroup(TimeStampedModel):
     name = models.CharField(max_length=255, null=True, blank=True)
     project = models.ForeignKey(Project, related_name="workgroups")
     users = models.ManyToManyField(User, related_name="workgroups",
-                                   through="WorkgroupUser", null=True, blank=True)
-    groups = models.ManyToManyField(Group, related_name="workgroups", null=True, blank=True)
+                                   through="WorkgroupUser", blank=True)
+    groups = models.ManyToManyField(Group, related_name="workgroups", blank=True)
 
     @property
     def cohort_name(self):
