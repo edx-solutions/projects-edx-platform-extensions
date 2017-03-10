@@ -16,12 +16,13 @@ from django.test.utils import override_settings
 from edx_solutions_api_integration.models import GroupProfile
 from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase, mixed_store_config
 from edx_solutions_projects.models import Project, Workgroup
-from student.tests.factories import CourseEnrollmentFactory
+from student.tests.factories import CourseEnrollmentFactory, UserFactory
 from xmodule.modulestore.tests.factories import CourseFactory, ItemFactory
 from edx_solutions_api_integration.test_utils import (
     APIClientMixin,
     SignalDisconnectTestMixin,
     make_non_atomic,
+    CourseGradingMixin,
 )
 from openedx.core.djangoapps.course_groups.cohorts import (
     get_cohort_by_name,
@@ -526,166 +527,6 @@ class WorkgroupsApiTests(SignalDisconnectTestMixin, ModuleStoreTestCase, APIClie
         self.assertEqual(response.data[0]['id'], submission_id)
         self.assertEqual(response.data[0]['user'], self.test_user.id)
 
-    @patch('courseware.grades.grade', Mock(return_value={
-        'percent': 0.2, 'totaled_scores': {}, 'grade_breakdown': [], 'section_breakdown': []
-    }))
-    @make_non_atomic
-    def test_workgroups_grades_post(self):
-        data = {
-            'name': self.test_workgroup_name,
-            'project': self.test_project.id
-        }
-        response = self.do_post(self.test_workgroups_uri, data)
-        self.assertEqual(response.status_code, 201)
-        workgroup_id = response.data['id']
-        users_uri = '{}{}/users/'.format(self.test_workgroups_uri, workgroup_id)
-        data = {"id": self.test_user.id}
-        response = self.do_post(users_uri, data)
-        self.assertEqual(response.status_code, 201)
-        data = {"id": self.test_user2.id}
-        response = self.do_post(users_uri, data)
-        self.assertEqual(response.status_code, 201)
-
-        grade_data = {
-            'course_id': self.test_course_id,
-            'content_id': self.test_course_content_id,
-            'grade': 0.85,
-            'max_grade': 0.75,
-        }
-        grades_uri = '{}{}/grades/'.format(self.test_workgroups_uri, workgroup_id)
-        response = self.do_post(grades_uri, grade_data)
-        self.assertEqual(response.status_code, 201)
-
-        # Confirm the grades for the users
-        course_grades_uri = '{}/{}/metrics/grades/'.format(self.test_courses_uri, self.test_course_id)
-        response = self.do_get(course_grades_uri)
-        self.assertEqual(response.status_code, 200)
-        self.assertGreater(len(response.data['grades']), 0)
-
-    @make_non_atomic
-    def test_workgroups_grades_post_invalid_course(self):
-        data = {
-            'name': self.test_workgroup_name,
-            'project': self.test_project.id
-        }
-        response = self.do_post(self.test_workgroups_uri, data)
-        self.assertEqual(response.status_code, 201)
-        workgroup_id = response.data['id']
-        users_uri = '{}{}/users/'.format(self.test_workgroups_uri, workgroup_id)
-        data = {"id": self.test_user.id}
-        response = self.do_post(users_uri, data)
-        self.assertEqual(response.status_code, 201)
-        data = {"id": self.test_user2.id}
-        response = self.do_post(users_uri, data)
-        self.assertEqual(response.status_code, 201)
-
-        grade_data = {
-            'course_id': self.test_bogus_course_id,
-            'content_id': self.test_course_content_id,
-            'grade': 0.85,
-            'max_grade': 0.75,
-        }
-        grades_uri = '{}{}/grades/'.format(self.test_workgroups_uri, workgroup_id)
-        response = self.do_post(grades_uri, grade_data)
-        self.assertEqual(response.status_code, 400)
-
-        grade_data = {
-            'course_id': "really-invalid-course-id",
-            'content_id': self.test_course_content_id,
-            'grade': 0.85,
-            'max_grade': 0.75,
-        }
-        grades_uri = '{}{}/grades/'.format(self.test_workgroups_uri, workgroup_id)
-        response = self.do_post(grades_uri, grade_data)
-        self.assertEqual(response.status_code, 400)
-
-    @make_non_atomic
-    def test_workgroups_grades_post_invalid_course_content(self):
-        data = {
-            'name': self.test_workgroup_name,
-            'project': self.test_project.id
-        }
-        response = self.do_post(self.test_workgroups_uri, data)
-        self.assertEqual(response.status_code, 201)
-        workgroup_id = response.data['id']
-        users_uri = '{}{}/users/'.format(self.test_workgroups_uri, workgroup_id)
-        data = {"id": self.test_user.id}
-        response = self.do_post(users_uri, data)
-        self.assertEqual(response.status_code, 201)
-        data = {"id": self.test_user2.id}
-        response = self.do_post(users_uri, data)
-        self.assertEqual(response.status_code, 201)
-
-        grade_data = {
-            'course_id': self.test_course_id,
-            'content_id': self.test_bogus_course_content_id,
-            'grade': 0.85,
-            'max_grade': 0.75,
-        }
-        grades_uri = '{}{}/grades/'.format(self.test_workgroups_uri, workgroup_id)
-        response = self.do_post(grades_uri, grade_data)
-        self.assertEqual(response.status_code, 400)
-
-    @make_non_atomic
-    def test_workgroups_grades_post_invalid_requests(self):
-        data = {
-            'name': self.test_workgroup_name,
-            'project': self.test_project.id
-        }
-        response = self.do_post(self.test_workgroups_uri, data)
-        self.assertEqual(response.status_code, 201)
-        workgroup_id = response.data['id']
-
-        users_uri = '{}{}/users/'.format(self.test_workgroups_uri, workgroup_id)
-        data = {"id": self.test_user.id}
-        response = self.do_post(users_uri, data)
-        self.assertEqual(response.status_code, 201)
-        data = {"id": self.test_user2.id}
-        response = self.do_post(users_uri, data)
-        self.assertEqual(response.status_code, 201)
-
-        grades_uri = '{}{}/grades/'.format(self.test_workgroups_uri, workgroup_id)
-        grade_data = {
-            'content_id': self.test_course_content_id,
-            'grade': 0.85,
-            'max_grade': 0.75,
-        }
-        response = self.do_post(grades_uri, grade_data)
-        self.assertEqual(response.status_code, 400)
-
-        grade_data = {
-            'course_id': self.test_bogus_course_id,
-            'content_id': self.test_course_content_id,
-            'grade': 0.85,
-            'max_grade': 0.75,
-        }
-        response = self.do_post(grades_uri, grade_data)
-        self.assertEqual(response.status_code, 400)
-
-        grade_data = {
-            'course_id': self.test_course_id,
-            'grade': 0.85,
-            'max_grade': 0.75,
-        }
-        response = self.do_post(grades_uri, grade_data)
-        self.assertEqual(response.status_code, 400)
-
-        grade_data = {
-            'course_id': self.test_course_id,
-            'content_id': self.test_course_content_id,
-            'max_grade': 0.75,
-        }
-        response = self.do_post(grades_uri, grade_data)
-        self.assertEqual(response.status_code, 400)
-
-        grade_data = {
-            'course_id': self.test_course_id,
-            'content_id': self.test_course_content_id,
-            'grade': 0.85,
-        }
-        response = self.do_post(grades_uri, grade_data)
-        self.assertEqual(response.status_code, 400)
-
     def test_submissions_list_post_invalid_relationships(self):
         data = {
             'name': self.test_workgroup_name,
@@ -724,3 +565,192 @@ class WorkgroupsApiTests(SignalDisconnectTestMixin, ModuleStoreTestCase, APIClie
         self.assertEqual(response.status_code, 204)
         response = self.do_get(test_uri)
         self.assertEqual(response.status_code, 404)
+
+
+@override_settings(MODULESTORE=MODULESTORE_CONFIG)
+class WorkgroupsGradesApiTests(SignalDisconnectTestMixin, ModuleStoreTestCase, APIClientMixin, CourseGradingMixin):
+
+    def setUp(self):
+        super(WorkgroupsGradesApiTests, self).setUp()
+        self.test_server_prefix = 'https://testserver'
+        self.test_workgroups_uri = '/api/server/workgroups/'
+        self.test_courses_uri = '/api/server/courses'
+
+        self.test_course = self.setup_course_with_grading()
+        self.test_data = '<html>{}</html>'.format(str(uuid.uuid4()))
+        self.test_group_project = ItemFactory.create(
+            category="group_project",
+            parent_location=self.test_course.midterm_assignment.parent,
+            data=self.test_data,
+            graded=True,
+            due=datetime(2014, 5, 16, 14, 30),
+            display_name="Group Project"
+        )
+
+        self.test_course_id = unicode(self.test_course.id)
+        self.test_course_content_id = unicode(self.test_group_project.scope_ids.usage_id)
+        self.test_workgroup_name = str(uuid.uuid4())
+        self.test_project = Project.objects.create(
+            course_id=self.test_course_id,
+            content_id=self.test_course_content_id
+        )
+
+        self.test_user = UserFactory.create()
+        self.test_user2 = UserFactory.create()
+
+        CourseEnrollmentFactory.create(user=self.test_user, course_id=self.test_course.id)
+        CourseEnrollmentFactory.create(user=self.test_user2, course_id=self.test_course.id)
+        cache.clear()
+
+    def test_workgroups_grades_post(self):
+        data = {
+            'name': self.test_workgroup_name,
+            'project': self.test_project.id
+        }
+        response = self.do_post(self.test_workgroups_uri, data)
+        self.assertEqual(response.status_code, 201)
+        workgroup_id = response.data['id']
+        users_uri = '{}{}/users/'.format(self.test_workgroups_uri, workgroup_id)
+        data = {"id": self.test_user.id}
+        response = self.do_post(users_uri, data)
+        self.assertEqual(response.status_code, 201)
+        data = {"id": self.test_user2.id}
+        response = self.do_post(users_uri, data)
+        self.assertEqual(response.status_code, 201)
+
+        grade_data = {
+            'course_id': self.test_course_id,
+            'content_id': self.test_course_content_id,
+            'grade': 0.85,
+            'max_grade': 1,
+        }
+        grades_uri = '{}{}/grades/'.format(self.test_workgroups_uri, workgroup_id)
+        response = self.do_post(grades_uri, grade_data)
+        self.assertEqual(response.status_code, 201)
+
+        # Confirm the grades for the users
+        course_grades_uri = '{}/{}/metrics/grades/'.format(self.test_courses_uri, self.test_course_id)
+        response = self.do_get(course_grades_uri)
+        self.assertEqual(response.status_code, 200)
+        self.assertGreater(len(response.data['grades']), 0)
+
+    def test_workgroups_grades_post_invalid_course(self):
+        data = {
+            'name': self.test_workgroup_name,
+            'project': self.test_project.id
+        }
+        response = self.do_post(self.test_workgroups_uri, data)
+        self.assertEqual(response.status_code, 201)
+        workgroup_id = response.data['id']
+        users_uri = '{}{}/users/'.format(self.test_workgroups_uri, workgroup_id)
+        data = {"id": self.test_user.id}
+        response = self.do_post(users_uri, data)
+        self.assertEqual(response.status_code, 201)
+        data = {"id": self.test_user2.id}
+        response = self.do_post(users_uri, data)
+        self.assertEqual(response.status_code, 201)
+
+        grade_data = {
+            'course_id': 'really-invalid-course-id',
+            'content_id': self.test_course_content_id,
+            'grade': 0.85,
+            'max_grade': 0.75,
+        }
+        grades_uri = '{}{}/grades/'.format(self.test_workgroups_uri, workgroup_id)
+        response = self.do_post(grades_uri, grade_data)
+        self.assertEqual(response.status_code, 400)
+
+        grade_data = {
+            'course_id': 'really-invalid-course-id',
+            'content_id': self.test_course_content_id,
+            'grade': 0.85,
+            'max_grade': 0.75,
+        }
+        grades_uri = '{}{}/grades/'.format(self.test_workgroups_uri, workgroup_id)
+        response = self.do_post(grades_uri, grade_data)
+        self.assertEqual(response.status_code, 400)
+
+    def test_workgroups_grades_post_invalid_course_content(self):
+        data = {
+            'name': self.test_workgroup_name,
+            'project': self.test_project.id
+        }
+        response = self.do_post(self.test_workgroups_uri, data)
+        self.assertEqual(response.status_code, 201)
+        workgroup_id = response.data['id']
+        users_uri = '{}{}/users/'.format(self.test_workgroups_uri, workgroup_id)
+        data = {"id": self.test_user.id}
+        response = self.do_post(users_uri, data)
+        self.assertEqual(response.status_code, 201)
+        data = {"id": self.test_user2.id}
+        response = self.do_post(users_uri, data)
+        self.assertEqual(response.status_code, 201)
+
+        grade_data = {
+            'course_id': self.test_course_id,
+            'content_id': 'bogus-content-id',
+            'grade': 0.85,
+            'max_grade': 0.75,
+        }
+        grades_uri = '{}{}/grades/'.format(self.test_workgroups_uri, workgroup_id)
+        response = self.do_post(grades_uri, grade_data)
+        self.assertEqual(response.status_code, 400)
+
+    def test_workgroups_grades_post_invalid_requests(self):
+        data = {
+            'name': self.test_workgroup_name,
+            'project': self.test_project.id
+        }
+        response = self.do_post(self.test_workgroups_uri, data)
+        self.assertEqual(response.status_code, 201)
+        workgroup_id = response.data['id']
+
+        users_uri = '{}{}/users/'.format(self.test_workgroups_uri, workgroup_id)
+        data = {"id": self.test_user.id}
+        response = self.do_post(users_uri, data)
+        self.assertEqual(response.status_code, 201)
+        data = {"id": self.test_user2.id}
+        response = self.do_post(users_uri, data)
+        self.assertEqual(response.status_code, 201)
+
+        grades_uri = '{}{}/grades/'.format(self.test_workgroups_uri, workgroup_id)
+        grade_data = {
+            'content_id': self.test_course_content_id,
+            'grade': 0.85,
+            'max_grade': 0.75,
+        }
+        response = self.do_post(grades_uri, grade_data)
+        self.assertEqual(response.status_code, 400)
+
+        grade_data = {
+            'course_id': 'really-invalid-course-id',
+            'content_id': self.test_course_content_id,
+            'grade': 0.85,
+            'max_grade': 0.75,
+        }
+        response = self.do_post(grades_uri, grade_data)
+        self.assertEqual(response.status_code, 400)
+
+        grade_data = {
+            'course_id': self.test_course_id,
+            'grade': 0.85,
+            'max_grade': 0.75,
+        }
+        response = self.do_post(grades_uri, grade_data)
+        self.assertEqual(response.status_code, 400)
+
+        grade_data = {
+            'course_id': self.test_course_id,
+            'content_id': self.test_course_content_id,
+            'max_grade': 0.75,
+        }
+        response = self.do_post(grades_uri, grade_data)
+        self.assertEqual(response.status_code, 400)
+
+        grade_data = {
+            'course_id': self.test_course_id,
+            'content_id': self.test_course_content_id,
+            'grade': 0.85,
+        }
+        response = self.do_post(grades_uri, grade_data)
+        self.assertEqual(response.status_code, 400)
