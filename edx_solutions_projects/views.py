@@ -13,17 +13,14 @@ from rest_framework.decorators import detail_route
 from rest_framework import status
 from rest_framework.response import Response
 
-from courseware.model_data import set_score
+from lms.djangoapps.grades.signals.signals import SCORE_PUBLISHED
 from openedx.core.djangoapps.course_groups.models import CourseCohort
 
 from edx_solutions_api_integration.permissions import SecureModelViewSet
-from courseware import module_render
+from edx_solutions_api_integration.courseware_access import get_course_key
 from courseware.courses import get_course
-from courseware.model_data import FieldDataCache
-from opaque_keys import InvalidKeyError
 from opaque_keys.edx.keys import CourseKey, UsageKey
-from opaque_keys.edx.locations import SlashSeparatedCourseKey
-from xmodule.modulestore import Location, InvalidLocationError
+from opaque_keys import InvalidKeyError
 from xmodule.modulestore.django import modulestore
 from openedx.core.djangoapps.course_groups.cohorts import (
     add_cohort, add_user_to_cohort, get_cohort_by_name, remove_user_from_cohort,
@@ -34,64 +31,6 @@ from .models import WorkgroupReview, WorkgroupSubmissionReview, WorkgroupPeerRev
 from .serializers import UserSerializer, GroupSerializer
 from .serializers import ProjectSerializer, WorkgroupSerializer, WorkgroupSubmissionSerializer
 from .serializers import WorkgroupReviewSerializer, WorkgroupSubmissionReviewSerializer, WorkgroupPeerReviewSerializer
-
-
-def _get_course(request, user, course_id, depth=0, load_content=False):
-    """
-    Utility method to obtain course components
-    """
-    course_descriptor = None
-    course_key = None
-    course_content = None
-    try:
-        course_key = CourseKey.from_string(course_id)
-    except InvalidKeyError:
-        try:
-            course_key = SlashSeparatedCourseKey.from_deprecated_string(course_id)
-        except InvalidKeyError:
-            pass
-    if course_key:
-        try:
-            course_descriptor = get_course(course_key, depth=depth)
-        except ValueError:
-            pass
-    if course_descriptor and load_content:
-        field_data_cache = FieldDataCache([course_descriptor], course_key, user)
-        course_content = module_render.get_module(
-            user,
-            request,
-            course_descriptor.location,
-            field_data_cache,
-            course_key)
-    return course_descriptor, course_key, course_content
-
-
-def _get_course_child(request, user, course_key, content_id, load_content=False):
-    """
-    Return a course xmodule/xblock to the caller
-    """
-    content_descriptor = None
-    content_key = None
-    content = None
-    try:
-        content_key = UsageKey.from_string(content_id)
-    except InvalidKeyError:
-        try:
-            content_key = Location.from_deprecated_string(content_id)
-        except (InvalidKeyError, InvalidLocationError):
-            pass
-    if content_key:
-        store = modulestore()
-        content_descriptor = store.get_item(content_key)
-    if content_descriptor and load_content:
-        field_data_cache = FieldDataCache([content_descriptor], course_key, user)
-        content = module_render.get_module(
-            user,
-            request,
-            content_key,
-            field_data_cache,
-            course_key)
-    return content_descriptor, content_key, content
 
 
 class GroupViewSet(viewsets.ModelViewSet):
@@ -129,7 +68,7 @@ class WorkgroupsViewSet(viewsets.ModelViewSet):
         if response.status_code == status.HTTP_201_CREATED:
             # create the workgroup cohort
             workgroup = get_object_or_404(self.queryset, pk=response.data['id'])
-            course_descriptor, course_key, course_content = _get_course(self.request, self.request.user, workgroup.project.course_id)  # pylint: disable=W0612
+            course_key = get_course_key(workgroup.project.course_id)
             add_cohort(course_key, workgroup.cohort_name, assignment_type)
 
         return response
@@ -198,7 +137,7 @@ class WorkgroupsViewSet(viewsets.ModelViewSet):
 
             # add user to the workgroup cohort, create it if it doesn't exist (for cases where there is a legacy
             # workgroup)
-            course_descriptor, course_key, course_content = _get_course(self.request, user, workgroup.project.course_id)  # pylint: disable=W0612
+            course_key = get_course_key(workgroup.project.course_id)
             try:
                 cohort = get_cohort_by_name(course_key, workgroup.cohort_name)
                 add_user_to_cohort(cohort, user.username)
@@ -221,9 +160,8 @@ class WorkgroupsViewSet(viewsets.ModelViewSet):
                 message = 'User {} does not exist'.format(user_id)
                 return Response({"detail": message}, status.HTTP_400_BAD_REQUEST)
             workgroup = self.get_object()
-            course_descriptor, course_key, course_content = _get_course(self.request, user, workgroup.project.course_id)  # pylint: disable=W0612
-            cohort = get_cohort_by_name(course_key,
-                                        workgroup.cohort_name)
+            course_key = get_course_key(workgroup.project.course_id)
+            cohort = get_cohort_by_name(course_key, workgroup.cohort_name)
             workgroup.remove_user(user)
             remove_user_from_cohort(cohort, user.username)
             return Response({}, status=status.HTTP_204_NO_CONTENT)
@@ -283,14 +221,24 @@ class WorkgroupsViewSet(viewsets.ModelViewSet):
         course_id = request.data.get('course_id')
         if course_id is None:
             return Response({}, status=status.HTTP_400_BAD_REQUEST)
-        course_descriptor, course_key, course_content = _get_course(request, request.user, course_id)  # pylint: disable=W0612
+
+        course_key = get_course_key(course_id)
+        if not course_key:
+            return Response({}, status=status.HTTP_400_BAD_REQUEST)
+
+        course_descriptor = get_course(course_key)
         if not course_descriptor:
             return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
         content_id = request.data.get('content_id')
         if content_id is None:
             return Response({}, status=status.HTTP_400_BAD_REQUEST)
-        content_descriptor, content_key, content = _get_course_child(request, request.user, course_key, content_id)  # pylint: disable=W0612
+
+        try:
+            usage_key = UsageKey.from_string(content_id)
+        except InvalidKeyError:
+            return Response({}, status=status.HTTP_400_BAD_REQUEST)
+        content_descriptor = modulestore().get_item(usage_key)
         if content_descriptor is None:
             return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -306,12 +254,15 @@ class WorkgroupsViewSet(viewsets.ModelViewSet):
 
         users = User.objects.filter(workgroups=pk)
         for user in users:
-            set_score(
-                user.id,
-                content_descriptor.location,
-                grade,
-                max_grade,
-            )
+            SCORE_PUBLISHED.send(
+                sender=None,
+                block=content_descriptor,
+                user=user,
+                raw_earned=grade,
+                raw_possible=max_grade,
+                only_if_higher=None,
+                )
+
         return Response({}, status=status.HTTP_201_CREATED)
 
 
