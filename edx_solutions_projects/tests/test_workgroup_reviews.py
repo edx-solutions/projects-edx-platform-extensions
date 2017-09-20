@@ -12,17 +12,19 @@ from django.test.utils import override_settings
 
 from edx_solutions_projects.models import Project, Workgroup, WorkgroupSubmission
 from student.models import anonymous_id_for_user
-from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase, mixed_store_config
+from xmodule.modulestore.tests.django_utils import (
+    ModuleStoreTestCase,
+    TEST_DATA_SPLIT_MODULESTORE
+)
 from xmodule.modulestore.tests.factories import CourseFactory, ItemFactory
 from edx_solutions_api_integration.test_utils import APIClientMixin
 
-MODULESTORE_CONFIG = mixed_store_config(settings.COMMON_TEST_DATA_ROOT, {})
 
-
-@override_settings(MODULESTORE=MODULESTORE_CONFIG)
 class WorkgroupReviewsApiTests(ModuleStoreTestCase, APIClientMixin):
 
     """ Test suite for Workgroup Review API views """
+
+    MODULESTORE = TEST_DATA_SPLIT_MODULESTORE
 
     def setUp(self):
         super(WorkgroupReviewsApiTests, self).setUp()
@@ -38,8 +40,7 @@ class WorkgroupReviewsApiTests(ModuleStoreTestCase, APIClientMixin):
         self.chapter = ItemFactory.create(
             category="chapter",
             parent_location=self.course.location,
-            data=self.test_data,
-            display_name="Overview"
+            display_name="Overview",
         )
 
         self.test_course_id = unicode(self.course.id)
