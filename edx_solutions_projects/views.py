@@ -54,7 +54,10 @@ class WorkgroupsViewSet(viewsets.ModelViewSet):
     Django Rest Framework ViewSet for the Workgroup model.
     """
     serializer_class = WorkgroupSerializer
-    queryset = Workgroup.objects.all()
+    queryset = Workgroup.objects.prefetch_related(
+        "submissions", "workgroup_reviews", "peer_reviews",
+        "groups", "users", "groups__groupprofile"
+    ).all()
 
     def create(self, request):
         """
@@ -271,7 +274,7 @@ class ProjectsViewSet(SecureModelViewSet):
     Django Rest Framework ViewSet for the Project model.
     """
     serializer_class = ProjectSerializer
-    queryset = Project.objects.all()
+    queryset = Project.objects.prefetch_related("workgroups").all()
 
     def list(self, request, *args, **kwargs):
         """
