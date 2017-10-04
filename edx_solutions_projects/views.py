@@ -151,6 +151,7 @@ class WorkgroupsViewSet(viewsets.ModelViewSet):
                 if assignment_type not in dict(CourseCohort.ASSIGNMENT_TYPE_CHOICES).keys():
                     message = "Not a valid assignment type, '{}'".format(assignment_type)
                     return Response({"detail": message}, status.HTTP_400_BAD_REQUEST)
+                workgroup = self.get_object()
                 cohort = add_cohort(course_key, workgroup.cohort_name, assignment_type)
                 for workgroup_user in workgroup.users.all():
                     add_user_to_cohort(cohort, workgroup_user.username)
