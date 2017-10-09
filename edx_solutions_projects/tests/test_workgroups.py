@@ -3,18 +3,24 @@
 """
 Run these tests: paver test_system -s lms -t edx_solutions_projects
 """
-from datetime import datetime
 import uuid
+import pytz
+import ddt
 from urllib import urlencode
 from mock import Mock, patch
-
+from datetime import datetime
 from django.conf import settings
 from django.contrib.auth.models import Group, User
 from django.core.cache import cache
 from django.test.utils import override_settings
 
 from edx_solutions_api_integration.models import GroupProfile
-from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase, mixed_store_config
+from xmodule.modulestore.tests.django_utils import ModuleStoreEnum
+from xmodule.modulestore.django import modulestore
+from xmodule.modulestore.tests.django_utils import (
+    ModuleStoreTestCase,
+    TEST_DATA_SPLIT_MODULESTORE
+)
 from edx_solutions_projects.models import Project, Workgroup
 from student.tests.factories import CourseEnrollmentFactory, UserFactory
 from xmodule.modulestore.tests.factories import CourseFactory, ItemFactory
@@ -33,13 +39,12 @@ from openedx.core.djangoapps.course_groups.cohorts import (
 )
 
 
-MODULESTORE_CONFIG = mixed_store_config(settings.COMMON_TEST_DATA_ROOT, {})
-
-
-@override_settings(MODULESTORE=MODULESTORE_CONFIG)
+@ddt.ddt
 class WorkgroupsApiTests(SignalDisconnectTestMixin, ModuleStoreTestCase, APIClientMixin):
 
     """ Test suite for Workgroups API views """
+
+    MODULESTORE = TEST_DATA_SPLIT_MODULESTORE
 
     def setUp(self):
         super(WorkgroupsApiTests, self).setUp()
@@ -55,74 +60,80 @@ class WorkgroupsApiTests(SignalDisconnectTestMixin, ModuleStoreTestCase, APIClie
         self.test_bogus_group_id = "2131241123"
         self.test_workgroup_name = str(uuid.uuid4())
 
-        self.test_course = CourseFactory.create(
-            start=datetime(2014, 6, 16, 14, 30),
-            end=datetime(2020, 1, 16, 14, 30),
-            grading_policy={
-                "GRADER": [
-                    {
-                        "type": "Homework",
-                        "min_count": 1,
-                        "drop_count": 0,
-                        "short_label": "HW",
-                        "weight": 0.5
-                    },
-                ],
-            },
-        )
-        self.test_data = '<html>{}</html>'.format(str(uuid.uuid4()))
+        self._create_course()
 
-        self.test_group_project = ItemFactory.create(
-            category="group_project",
-            parent_location=self.test_course.location,
-            data=self.test_data,
-            due=datetime(2014, 5, 16, 14, 30),
-            display_name="Group Project"
-        )
+    def _create_course(self, store=ModuleStoreEnum.Type.split):
+        with modulestore().default_store(store):
+            self.test_course = CourseFactory.create(
+                start=datetime(2014, 6, 16, 14, 30, tzinfo=pytz.UTC),
+                end=datetime(2020, 1, 16, 14, 30, tzinfo=pytz.UTC),
+                grading_policy={
+                    "GRADER": [
+                        {
+                            "type": "Homework",
+                            "min_count": 1,
+                            "drop_count": 0,
+                            "short_label": "HW",
+                            "weight": 0.5
+                        },
+                    ],
+                },
+            )
+            self.test_data = '<html>{}</html>'.format(str(uuid.uuid4()))
 
-        self.test_course_id = unicode(self.test_course.id)
-        self.test_course_content_id = unicode(self.test_group_project.scope_ids.usage_id)
+            self.test_group_project = ItemFactory.create(
+                category="group-project",
+                parent_location=self.test_course.location,
+                due=datetime(2014, 5, 16, 14, 30, tzinfo=pytz.UTC),
+                display_name="Group Project"
+            )
 
-        self.test_group_name = str(uuid.uuid4())
-        self.test_group = Group.objects.create(
-            name=self.test_group_name
-        )
-        GroupProfile.objects.create(
-            name=self.test_group_name,
-            group_id=self.test_group.id,
-            group_type="series"
-        )
+            self.test_course_id = unicode(self.test_course.id)
 
-        self.test_project = Project.objects.create(
-            course_id=self.test_course_id,
-            content_id=self.test_course_content_id
-        )
+            self.test_course_content_id = unicode(self.test_group_project.scope_ids.usage_id)
 
-        self.test_project2 = Project.objects.create(
-            course_id=self.test_course_id,
-            content_id=unicode(self.test_group_project.scope_ids.usage_id)
-        )
+            self.test_group_name = str(uuid.uuid4())
+            self.test_group = Group.objects.create(
+                name=self.test_group_name
+            )
+            GroupProfile.objects.create(
+                name=self.test_group_name,
+                group_id=self.test_group.id,
+                group_type="series"
+            )
 
-        self.test_user_email = str(uuid.uuid4())
-        self.test_user_username = str(uuid.uuid4())
-        self.test_user = User.objects.create(
-            email=self.test_user_email,
-            username=self.test_user_username
-        )
+            self.test_project = Project.objects.create(
+                course_id=self.test_course_id,
+                content_id=self.test_course_content_id
+            )
 
-        self.test_user_email2 = str(uuid.uuid4())
-        self.test_user_username2 = str(uuid.uuid4())
-        self.test_user2 = User.objects.create(
-            email=self.test_user_email2,
-            username=self.test_user_username2
-        )
+            self.test_project2 = Project.objects.create(
+                course_id=self.test_course_id,
+                content_id=unicode(self.test_group_project.scope_ids.usage_id)
+            )
 
-        CourseEnrollmentFactory.create(user=self.test_user, course_id=self.test_course.id)
-        CourseEnrollmentFactory.create(user=self.test_user2, course_id=self.test_course.id)
-        cache.clear()
+            self.test_user_email = str(uuid.uuid4())
+            self.test_user_username = str(uuid.uuid4())
+            self.test_user = User.objects.create(
+                email=self.test_user_email,
+                username=self.test_user_username
+            )
+
+            self.test_user_email2 = str(uuid.uuid4())
+            self.test_user_username2 = str(uuid.uuid4())
+            self.test_user2 = User.objects.create(
+                email=self.test_user_email2,
+                username=self.test_user_username2
+            )
+
+            CourseEnrollmentFactory.create(user=self.test_user, course_id=self.test_course.id)
+            CourseEnrollmentFactory.create(user=self.test_user2, course_id=self.test_course.id)
+            cache.clear()
 
     @make_non_atomic
-    def test_workgroups_list_post(self):
+    @ddt.data(ModuleStoreEnum.Type.split, ModuleStoreEnum.Type.mongo)
+    def test_workgroups_list_post(self, store):
+        self._create_course(store)
         data = {
             'name': self.test_workgroup_name,
             'project': self.test_project.id
@@ -157,7 +168,9 @@ class WorkgroupsApiTests(SignalDisconnectTestMixin, ModuleStoreTestCase, APIClie
         self.assertIsNotNone(cohort)
 
     @make_non_atomic
-    def test_workgroups_detail_get(self):
+    @ddt.data(ModuleStoreEnum.Type.split, ModuleStoreEnum.Type.mongo)
+    def test_workgroups_detail_get(self, store):
+        self._create_course(store)
         data = {
             'name': self.test_workgroup_name,
             'project': self.test_project.id
@@ -181,7 +194,9 @@ class WorkgroupsApiTests(SignalDisconnectTestMixin, ModuleStoreTestCase, APIClie
         self.assertIsNotNone(response.data['modified'])
 
     @make_non_atomic
-    def test_workgroups_groups_post(self):
+    @ddt.data(ModuleStoreEnum.Type.split, ModuleStoreEnum.Type.mongo)
+    def test_workgroups_groups_post(self, store):
+        self._create_course(store)
         data = {
             'name': self.test_workgroup_name,
             'project': self.test_project.id
@@ -211,7 +226,9 @@ class WorkgroupsApiTests(SignalDisconnectTestMixin, ModuleStoreTestCase, APIClie
         self.assertEqual(response.data['groups'][1]['name'], test_groupnoprofile_name)
 
     @make_non_atomic
-    def test_workgroups_groups_get(self):
+    @ddt.data(ModuleStoreEnum.Type.split, ModuleStoreEnum.Type.mongo)
+    def test_workgroups_groups_get(self, store):
+        self._create_course(store)
         data = {
             'name': self.test_workgroup_name,
             'project': self.test_project.id
@@ -229,7 +246,9 @@ class WorkgroupsApiTests(SignalDisconnectTestMixin, ModuleStoreTestCase, APIClie
         self.assertEqual(response.data[0]['name'], self.test_group.name)
 
     @make_non_atomic
-    def test_workgroups_users_post(self):
+    @ddt.data(ModuleStoreEnum.Type.split, ModuleStoreEnum.Type.mongo)
+    def test_workgroups_users_post(self, store):
+        self._create_course(store)
         data = {
             'name': self.test_workgroup_name,
             'project': self.test_project.id
@@ -256,7 +275,9 @@ class WorkgroupsApiTests(SignalDisconnectTestMixin, ModuleStoreTestCase, APIClie
         self.assertTrue(is_user_in_cohort(cohort, self.test_user.id))
 
     @make_non_atomic
-    def test_workgroups_users_post_preexisting_workgroup(self):
+    @ddt.data(ModuleStoreEnum.Type.split, ModuleStoreEnum.Type.mongo)
+    def test_workgroups_users_post_preexisting_workgroup(self, store):
+        self._create_course(store)
         data = {
             'name': self.test_workgroup_name,
             'project': self.test_project.id
@@ -281,7 +302,9 @@ class WorkgroupsApiTests(SignalDisconnectTestMixin, ModuleStoreTestCase, APIClie
         self.assertEqual(response.status_code, 400)
 
     @make_non_atomic
-    def test_workgroups_users_post_preexisting_project(self):
+    @ddt.data(ModuleStoreEnum.Type.split, ModuleStoreEnum.Type.mongo)
+    def test_workgroups_users_post_preexisting_project(self, store):
+        self._create_course(store)
         data = {
             'name': self.test_workgroup_name,
             'project': self.test_project.id
@@ -310,7 +333,9 @@ class WorkgroupsApiTests(SignalDisconnectTestMixin, ModuleStoreTestCase, APIClie
         self.assertEqual(response.status_code, 400)
 
     @make_non_atomic
-    def test_workgroups_users_post_with_cohort_backfill(self):
+    @ddt.data(ModuleStoreEnum.Type.split, ModuleStoreEnum.Type.mongo)
+    def test_workgroups_users_post_with_cohort_backfill(self, store):
+        self._create_course(store)
         """
         This test asserts a case where a workgroup was created before the existence of a cohorted discussion
         """
@@ -360,7 +385,9 @@ class WorkgroupsApiTests(SignalDisconnectTestMixin, ModuleStoreTestCase, APIClie
         self.assertTrue(is_user_in_cohort(cohort, self.test_user2.id))
 
     @make_non_atomic
-    def test_workgroups_users_delete(self):
+    @ddt.data(ModuleStoreEnum.Type.split, ModuleStoreEnum.Type.mongo)
+    def test_workgroups_users_delete(self, store):
+        self._create_course(store)
         data = {
             'name': self.test_workgroup_name,
             'project': self.test_project.id
@@ -392,7 +419,9 @@ class WorkgroupsApiTests(SignalDisconnectTestMixin, ModuleStoreTestCase, APIClie
         self.assertEqual(response.status_code, 400)
 
     @make_non_atomic
-    def test_workgroups_users_get(self):
+    @ddt.data(ModuleStoreEnum.Type.split, ModuleStoreEnum.Type.mongo)
+    def test_workgroups_users_get(self, store):
+        self._create_course(store)
         data = {
             'name': self.test_workgroup_name,
             'project': self.test_project.id
@@ -411,7 +440,9 @@ class WorkgroupsApiTests(SignalDisconnectTestMixin, ModuleStoreTestCase, APIClie
         self.assertEqual(response.data[0]['email'], self.test_user.email)
 
     @make_non_atomic
-    def test_workgroups_peer_reviews_get(self):
+    @ddt.data(ModuleStoreEnum.Type.split, ModuleStoreEnum.Type.mongo)
+    def test_workgroups_peer_reviews_get(self, store):
+        self._create_course(store)
         data = {
             'name': self.test_workgroup_name,
             'project': self.test_project.id
@@ -458,7 +489,9 @@ class WorkgroupsApiTests(SignalDisconnectTestMixin, ModuleStoreTestCase, APIClie
         self.assertEqual(response.data[0]['reviewer'], self.test_user.username)
 
     @make_non_atomic
-    def test_workgroups_workgroup_reviews_get(self):
+    @ddt.data(ModuleStoreEnum.Type.split, ModuleStoreEnum.Type.mongo)
+    def test_workgroups_workgroup_reviews_get(self, store):
+        self._create_course(store)
         data = {
             'name': self.test_workgroup_name,
             'project': self.test_project.id
@@ -502,7 +535,9 @@ class WorkgroupsApiTests(SignalDisconnectTestMixin, ModuleStoreTestCase, APIClie
         self.assertEqual(response.data[0]['id'], wr1_id)
         self.assertEqual(response.data[0]['reviewer'], self.test_user.username)
 
-    def test_workgroups_submissions_get(self):
+    @ddt.data(ModuleStoreEnum.Type.split, ModuleStoreEnum.Type.mongo)
+    def test_workgroups_submissions_get(self, store):
+        self._create_course(store)
         data = {
             'name': self.test_workgroup_name,
             'project': self.test_project.id
@@ -527,7 +562,9 @@ class WorkgroupsApiTests(SignalDisconnectTestMixin, ModuleStoreTestCase, APIClie
         self.assertEqual(response.data[0]['id'], submission_id)
         self.assertEqual(response.data[0]['user'], self.test_user.id)
 
-    def test_submissions_list_post_invalid_relationships(self):
+    @ddt.data(ModuleStoreEnum.Type.split, ModuleStoreEnum.Type.mongo)
+    def test_submissions_list_post_invalid_relationships(self, store):
+        self._create_course(store)
         data = {
             'name': self.test_workgroup_name,
             'project': self.test_project.id
@@ -546,12 +583,16 @@ class WorkgroupsApiTests(SignalDisconnectTestMixin, ModuleStoreTestCase, APIClie
         response = self.do_post(groups_uri, data)
         self.assertEqual(response.status_code, 400)
 
-    def test_workgroups_detail_get_undefined(self):
+    @ddt.data(ModuleStoreEnum.Type.split, ModuleStoreEnum.Type.mongo)
+    def test_workgroups_detail_get_undefined(self, store):
+        self._create_course(store)
         test_uri = '{}123456789/'.format(self.test_workgroups_uri)
         response = self.do_get(test_uri)
         self.assertEqual(response.status_code, 404)
 
-    def test_workgroups_detail_delete(self):
+    @ddt.data(ModuleStoreEnum.Type.split, ModuleStoreEnum.Type.mongo)
+    def test_workgroups_detail_delete(self, store):
+        self._create_course(store)
         data = {
             'name': self.test_workgroup_name,
             'project': self.test_project.id
@@ -567,8 +608,10 @@ class WorkgroupsApiTests(SignalDisconnectTestMixin, ModuleStoreTestCase, APIClie
         self.assertEqual(response.status_code, 404)
 
 
-@override_settings(MODULESTORE=MODULESTORE_CONFIG)
+@ddt.ddt
 class WorkgroupsGradesApiTests(SignalDisconnectTestMixin, ModuleStoreTestCase, APIClientMixin, CourseGradingMixin):
+
+    MODULESTORE = TEST_DATA_SPLIT_MODULESTORE
 
     def setUp(self):
         super(WorkgroupsGradesApiTests, self).setUp()
@@ -579,11 +622,10 @@ class WorkgroupsGradesApiTests(SignalDisconnectTestMixin, ModuleStoreTestCase, A
         self.test_course = self.setup_course_with_grading()
         self.test_data = '<html>{}</html>'.format(str(uuid.uuid4()))
         self.test_group_project = ItemFactory.create(
-            category="group_project",
+            category="group-project",
             parent_location=self.test_course.midterm_assignment.parent,
-            data=self.test_data,
             graded=True,
-            due=datetime(2014, 5, 16, 14, 30),
+            due=datetime(2014, 5, 16, 14, 30, tzinfo=pytz.UTC),
             display_name="Group Project"
         )
 

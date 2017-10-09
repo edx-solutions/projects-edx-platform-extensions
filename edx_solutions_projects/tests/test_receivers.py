@@ -4,38 +4,39 @@ Run these tests: paver test_system -s lms -t edx_solutions_projects
 """
 from datetime import datetime
 import uuid
+import pytz
 
 from django.conf import settings
 from django.test.utils import override_settings
-from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase, mixed_store_config
-
+from xmodule.modulestore.tests.django_utils import (
+    ModuleStoreTestCase,
+    TEST_DATA_SPLIT_MODULESTORE
+)
 from xmodule.modulestore.tests.factories import CourseFactory, ItemFactory
 
 from util.signals import course_deleted
 from edx_solutions_projects import models
 
-MODULESTORE_CONFIG = mixed_store_config(settings.COMMON_TEST_DATA_ROOT, {})
 
-
-@override_settings(MODULESTORE=MODULESTORE_CONFIG)
 class ProjectsReceiversTests(ModuleStoreTestCase):
     """ Test suite for signal receivers """
+
+    MODULESTORE = TEST_DATA_SPLIT_MODULESTORE
 
     def setUp(self):
         super(ProjectsReceiversTests, self).setUp()
         # Create a course to work with
         self.course = CourseFactory.create(
-            start=datetime(2014, 6, 16, 14, 30),
-            end=datetime(2020, 1, 16)
+            start=datetime(2014, 6, 16, 14, 30, tzinfo=pytz.UTC),
+            end=datetime(2020, 1, 16, 14, 30, tzinfo=pytz.UTC)
         )
         test_data = '<html>{}</html>'.format(str(uuid.uuid4()))
 
         self.chapter = ItemFactory.create(
             category="chapter",
             parent_location=self.course.location,
-            data=test_data,
             due=datetime(2014, 5, 16, 14, 30),
-            display_name="Overview"
+            display_name="Overview",
         )
 
     def test_receiver_on_course_deleted(self):

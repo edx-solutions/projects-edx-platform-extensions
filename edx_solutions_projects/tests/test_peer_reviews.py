@@ -4,6 +4,7 @@
 Run these tests: paver test_system -s lms -t edx_solutions_projects
 """
 import uuid
+import ddt
 
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -12,17 +13,20 @@ from django.test.utils import override_settings
 
 from edx_solutions_projects.models import Project, Workgroup
 from student.models import anonymous_id_for_user
-from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase, mixed_store_config
+from xmodule.modulestore import ModuleStoreEnum
+from xmodule.modulestore.tests.django_utils import (
+    ModuleStoreTestCase,
+    TEST_DATA_SPLIT_MODULESTORE
+)
 from xmodule.modulestore.tests.factories import CourseFactory, ItemFactory
 from edx_solutions_api_integration.test_utils import APIClientMixin
 
-MODULESTORE_CONFIG = mixed_store_config(settings.COMMON_TEST_DATA_ROOT, {})
 
-
-@override_settings(MODULESTORE=MODULESTORE_CONFIG)
 class PeerReviewsApiTests(ModuleStoreTestCase, APIClientMixin):
 
     """ Test suite for Peer Reviews API views """
+
+    MODULESTORE = TEST_DATA_SPLIT_MODULESTORE
 
     def setUp(self):
         super(PeerReviewsApiTests, self).setUp()
@@ -38,7 +42,6 @@ class PeerReviewsApiTests(ModuleStoreTestCase, APIClientMixin):
         self.chapter = ItemFactory.create(
             category="chapter",
             parent_location=self.course.location,
-            data=self.test_data,
             display_name="Overview"
         )
 
