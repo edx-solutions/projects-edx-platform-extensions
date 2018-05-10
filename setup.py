@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='projects-edx-platform-extensions',
-    version='1.1.2',
+    version='1.1.3',
     description='Projects management extension for edX platform',
     long_description=open('README.rst').read(),
     author='edX',
@@ -13,6 +13,5 @@ setup(
     include_package_data=True,
     install_requires=[
         "django>=1.8",
-        'djangorestframework>=3.2.0',
     ],
 )
