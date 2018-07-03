@@ -24,7 +24,6 @@ class Command(BaseCommand):
         if choice == 'y' or choice == 'yes':
             WorkgroupSubmission.objects.filter(
                 document_filename='image.png',
-                document_id=u'Kickoff_deliverable',
             ).delete()
 
             log.info('Done.')
