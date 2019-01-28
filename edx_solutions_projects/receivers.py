@@ -1,11 +1,13 @@
 """
 Signal handlers supporting various gradebook use cases
 """
+from django.db.models.signals import pre_delete
 from django.dispatch import receiver
 
 from util.signals import course_deleted
 
 from edx_solutions_projects import models
+from edx_solutions_projects.models import WorkgroupSubmission
 
 
 @receiver(course_deleted)
@@ -31,3 +33,8 @@ def on_course_deleted(sender, **kwargs):  # pylint: disable=W0613
                 models.WorkgroupUser.objects.filter(workgroup=workgroup).delete()
                 models.Workgroup.objects.filter(id=workgroup.id).delete()
             models.Project.objects.filter(id=project.id).delete()
+
+
+@receiver(pre_delete, sender=WorkgroupSubmission)
+def delete_image(_sender, instance, **_kwargs):
+    instance.delete_file()
