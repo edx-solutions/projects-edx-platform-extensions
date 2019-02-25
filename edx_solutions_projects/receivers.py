@@ -7,7 +7,7 @@ from django.dispatch import receiver
 from util.signals import course_deleted
 
 from edx_solutions_projects import models
-from edx_solutions_projects.models import WorkgroupSubmission
+from edx_solutions_projects.models import WorkgroupSubmission, WorkgroupUser
 
 
 @receiver(course_deleted)
@@ -45,3 +45,11 @@ def reassign_or_delete_image(instance, **_kwargs):
         instance.save()
     else:
         instance.delete_file()
+
+
+@receiver(post_delete, sender=WorkgroupUser)
+def delete_empty_group(instance, **_kwargs):
+    """Delete workgroup after deleting its last participant."""
+    workgroup = instance.workgroup
+    if workgroup.users.count() == 0:
+        workgroup.delete()
