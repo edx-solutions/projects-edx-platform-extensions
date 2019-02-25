@@ -1,7 +1,7 @@
 """
 Signal handlers supporting various gradebook use cases
 """
-from django.db.models.signals import pre_delete
+from django.db.models.signals import post_delete
 from django.dispatch import receiver
 
 from util.signals import course_deleted
@@ -35,6 +35,13 @@ def on_course_deleted(sender, **kwargs):  # pylint: disable=W0613
             models.Project.objects.filter(id=project.id).delete()
 
 
-@receiver(pre_delete, sender=WorkgroupSubmission)
-def delete_image(_sender, instance, **_kwargs):
-    instance.delete_file()
+@receiver(post_delete, sender=WorkgroupSubmission)
+def reassign_or_delete_image(instance, **_kwargs):
+    """Reassigns image if user is deleted and there are more users in the workgroup."""
+    explicit_deletion = instance.workgroup.users.filter(id=instance.user.id).exists()
+    next_user = instance.workgroup.users.first()
+    if next_user and not explicit_deletion:
+        instance.user = next_user
+        instance.save()
+    else:
+        instance.delete_file()
