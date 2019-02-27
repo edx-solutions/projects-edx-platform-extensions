@@ -37,13 +37,12 @@ def on_course_deleted(sender, **kwargs):  # pylint: disable=W0613
 
 @receiver(pre_delete, sender=WorkgroupUser)
 def reassign_or_delete_submissions(instance, **_kwargs):
-    """Reassigns submission if user is deleted and there are more users in the workgroup."""
+    """Reassigns submissions if user is deleted and there are more users in the workgroup. Otherwise deletes them."""
     submissions = instance.user.submissions.all()
-    others = set(instance.workgroup.users.all()) - set([instance.user])
+    next_user = instance.workgroup.users.exclude(id=instance.user.id).first()
 
-    if others:
+    if next_user:
         # Reassign submissions
-        next_user = others.pop()
         for submission in submissions:
             submission.user = next_user
             submission.save()
