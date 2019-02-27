@@ -52,7 +52,7 @@ def reassign_or_delete_submissions(instance, **_kwargs):
 
 
 @receiver(post_delete, sender=WorkgroupUser)
-def delete_empty_group(instance, **_kwargs):
+def delete_empty_workgroup(instance, **_kwargs):
     """Delete workgroup after deleting its last participant."""
     workgroup = instance.workgroup
     if workgroup.users.count() == 0:
