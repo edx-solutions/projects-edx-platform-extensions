@@ -1,7 +1,7 @@
 """
 Signal handlers supporting various gradebook use cases
 """
-from django.db.models.signals import post_delete
+from django.db.models.signals import post_delete, pre_delete
 from django.dispatch import receiver
 
 from util.signals import course_deleted
@@ -35,16 +35,21 @@ def on_course_deleted(sender, **kwargs):  # pylint: disable=W0613
             models.Project.objects.filter(id=project.id).delete()
 
 
-@receiver(post_delete, sender=WorkgroupSubmission)
-def reassign_or_delete_image(instance, **_kwargs):
-    """Reassigns image if user is deleted and there are more users in the workgroup."""
-    explicit_deletion = instance.workgroup.users.filter(id=instance.user.id).exists()
-    next_user = instance.workgroup.users.first()
-    if next_user and not explicit_deletion:
-        instance.user = next_user
-        instance.save()
+@receiver(pre_delete, sender=WorkgroupUser)
+def reassign_or_delete_submissions(instance, **_kwargs):
+    """Reassigns submission if user is deleted and there are more users in the workgroup."""
+    submissions = instance.user.submissions.all()
+    others = set(instance.workgroup.users.all()) - set([instance.user])
+
+    if others:
+        # Reassign submissions
+        next_user = others.pop()
+        for submission in submissions:
+            submission.user = next_user
+            submission.save()
     else:
-        instance.delete_file()
+        # Remove submissions
+        submissions.delete()
 
 
 @receiver(post_delete, sender=WorkgroupUser)
@@ -53,3 +58,9 @@ def delete_empty_group(instance, **_kwargs):
     workgroup = instance.workgroup
     if workgroup.users.count() == 0:
         workgroup.delete()
+
+
+@receiver(post_delete, sender=WorkgroupSubmission)
+def delete_submission_file(instance, **_kwargs):
+    """Delete submission file when submission is deleted"""
+    instance.delete_file()
