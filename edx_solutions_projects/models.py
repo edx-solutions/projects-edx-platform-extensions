@@ -3,6 +3,8 @@
 from django.contrib.auth.models import Group, User
 from django.db import models
 from django.core.exceptions import ValidationError
+from django.core.files.storage import default_storage
+
 
 from model_utils.models import TimeStampedModel
 
@@ -131,11 +133,23 @@ class WorkgroupSubmission(TimeStampedModel):
     'Group Project' XBlock and data for a specific instance is persisted here
     """
     workgroup = models.ForeignKey(Workgroup, related_name="submissions")
-    user = models.ForeignKey(User, related_name="submissions")
+    user = models.ForeignKey(User, related_name="submissions", on_delete=models.DO_NOTHING)
     document_id = models.CharField(max_length=255)
     document_url = models.CharField(max_length=2048)
     document_mime_type = models.CharField(max_length=255)
     document_filename = models.CharField(max_length=255, blank=True, null=True)
+
+    def delete_file(self):
+        """
+        Delete uploaded file before deleting the submission.
+        """
+        file_ = self.document_url.lstrip('/media/')
+
+        try:
+            default_storage.delete(file_)
+        except OSError:
+            # It doesn't exist anymore.
+            pass
 
 
 class WorkgroupSubmissionReview(TimeStampedModel):

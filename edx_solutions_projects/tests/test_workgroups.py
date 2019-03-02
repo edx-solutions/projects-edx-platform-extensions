@@ -400,23 +400,41 @@ class WorkgroupsApiTests(SignalDisconnectTestMixin, ModuleStoreTestCase, APIClie
         data = {"id": self.test_user.id}
         response = self.do_post(users_uri, data)
         self.assertEqual(response.status_code, 201)
-        # test if workgroup has exactly one user
+        # Test if workgroup has exactly two users
         response = self.do_get(test_workgroup_uri)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data['users']), 1)
 
-        # test to delete a user from workgroup
+        # Enroll second user
+        data = {"id": self.test_user2.id}
+        response = self.do_post(users_uri, data)
+        self.assertEqual(response.status_code, 201)
+
+        # Test if workgroup has exactly two users
+        response = self.do_get(test_workgroup_uri)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data['users']), 2)
+
+        # Test deleting an invalid user from workgroup
+        data = {"id": '345345344'}
+        response = self.do_delete(users_uri, data)
+        self.assertEqual(response.status_code, 400)
+
+        # Test deleting an existing user from workgroup
         data = {"id": self.test_user.id}
         response = self.do_delete(users_uri, data)
         self.assertEqual(response.status_code, 204)
         response = self.do_get(test_workgroup_uri)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.data['users']), 0)
+        self.assertEqual(len(response.data['users']), 1)
+        self.assertEqual(response.data['users'][0]['id'], self.test_user2.id)
 
-        # test to delete an invalide user from workgroup
-        data = {"id": '345345344'}
+        # Test deleting the last user from workgroup; the empty workgroup should get deleted too
+        data = {"id": self.test_user2.id}
         response = self.do_delete(users_uri, data)
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, 204)
+        response = self.do_get(test_workgroup_uri)
+        self.assertEqual(response.status_code, 404)
 
     @make_non_atomic
     @ddt.data(ModuleStoreEnum.Type.split, ModuleStoreEnum.Type.mongo)
