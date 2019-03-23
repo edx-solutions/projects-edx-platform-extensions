@@ -1,5 +1,7 @@
 """ Database ORM models managed by this Django app """
 
+from six.moves.urllib_parse import urlparse
+
 from django.contrib.auth.models import Group, User
 from django.db import models
 from django.core.exceptions import ValidationError
@@ -143,10 +145,10 @@ class WorkgroupSubmission(TimeStampedModel):
         """
         Delete uploaded file before deleting the submission.
         """
-        file_ = self.document_url.lstrip('/media/')
+        path = urlparse(self.document_url).path.lstrip('/media/')
 
         try:
-            default_storage.delete(file_)
+            default_storage.delete(path)
         except OSError:
             # It doesn't exist anymore.
             pass
