@@ -147,14 +147,13 @@ class WorkgroupSubmission(TimeStampedModel):
         """
         :return: the path to the document in default storage
         """
-        return urlparse(unquote(self.document_url)).path
+        return urlparse(unquote(self.document_url)).path.lstrip('/media/')
 
     def delete_file(self):
         """
         Delete uploaded file before deleting the submission.
         """
-        path = self.document_path.lstrip('/media/')
-        default_storage.delete(path)
+        default_storage.delete(self.document_path)
 
 
 class WorkgroupSubmissionReview(TimeStampedModel):
