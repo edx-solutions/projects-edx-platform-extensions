@@ -142,11 +142,18 @@ class WorkgroupSubmission(TimeStampedModel):
     document_mime_type = models.CharField(max_length=255)
     document_filename = models.CharField(max_length=255, blank=True, null=True)
 
+    @property
+    def document_path(self):
+        """
+        :return: the path to the document in default storage
+        """
+        return urlparse(unquote(self.document_url)).path
+
     def delete_file(self):
         """
         Delete uploaded file before deleting the submission.
         """
-        path = urlparse(unquote(self.document_url)).path.lstrip('/media/')
+        path = self.document_path.lstrip('/media/')
         default_storage.delete(path)
 
 
