@@ -1,6 +1,7 @@
 """ Database ORM models managed by this Django app """
 
 from six.moves.urllib_parse import urlparse
+from urllib import unquote
 
 from django.contrib.auth.models import Group, User
 from django.db import models
@@ -145,13 +146,8 @@ class WorkgroupSubmission(TimeStampedModel):
         """
         Delete uploaded file before deleting the submission.
         """
-        path = urlparse(self.document_url).path.lstrip('/media/')
-
-        try:
-            default_storage.delete(path)
-        except OSError:
-            # It doesn't exist anymore.
-            pass
+        path = urlparse(unquote(self.document_url)).path.lstrip('/media/')
+        default_storage.delete(path)
 
 
 class WorkgroupSubmissionReview(TimeStampedModel):
