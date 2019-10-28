@@ -14,7 +14,7 @@ from xmodule.modulestore.tests.django_utils import (
 )
 from xmodule.modulestore.tests.factories import CourseFactory, ItemFactory
 
-from util.signals import course_deleted
+from xmodule.modulestore.django import SignalHandler
 from edx_solutions_projects import models
 
 
@@ -91,7 +91,7 @@ class ProjectsReceiversTests(ModuleStoreTestCase):
         self.assertEqual(models.WorkgroupPeerReview.objects.filter(id=workgroup_peer_review.id).count(), 1)
 
         # Run the data migration
-        course_deleted.send(sender=None, course_key=self.course.id)
+        SignalHandler.course_deleted.send(sender=None, course_key=self.course.id)
 
         # Validate that the course references were removed
         self.assertEqual(models.Project.objects.filter(id=project.id).count(), 0)

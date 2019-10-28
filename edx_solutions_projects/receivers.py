@@ -4,13 +4,13 @@ Signal handlers supporting various gradebook use cases
 from django.db.models.signals import post_delete, pre_delete
 from django.dispatch import receiver
 
-from util.signals import course_deleted
+from xmodule.modulestore.django import SignalHandler
 
 from edx_solutions_projects import models
 from edx_solutions_projects.models import WorkgroupSubmission, WorkgroupUser
 
 
-@receiver(course_deleted)
+@receiver(SignalHandler.course_deleted)
 def on_course_deleted(sender, **kwargs):  # pylint: disable=W0613
     """
     Listens for a 'course_deleted' signal and when observed
