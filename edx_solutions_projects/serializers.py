@@ -8,6 +8,7 @@ from edx_solutions_api_integration.groups.serializers import GroupSerializer
 from edx_solutions_organizations.models import Organization
 from .models import Project, Workgroup, WorkgroupSubmission
 from .models import WorkgroupReview, WorkgroupSubmissionReview, WorkgroupPeerReview
+from .utils import make_temporary_s3_link
 
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
@@ -66,6 +67,7 @@ class WorkgroupSubmissionSerializer(serializers.HyperlinkedModelSerializer):
     user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
     workgroup = serializers.PrimaryKeyRelatedField(queryset=Workgroup.objects.all())
     reviews = serializers.PrimaryKeyRelatedField(many=True, queryset=WorkgroupReview.objects.all(), required=False)
+    document_url = serializers.SerializerMethodField()
 
     class Meta:
         """ Meta class for defining additional serializer characteristics """
@@ -75,6 +77,26 @@ class WorkgroupSubmissionSerializer(serializers.HyperlinkedModelSerializer):
             'document_mime_type', 'document_filename',
             'user', 'workgroup', 'reviews'
         )
+
+    def get_document_url(self, obj):
+        """
+        Create a temporary S3 link in case of S3 URL
+        """
+        if 's3.amazonaws.com' in obj.document_url:
+            try:
+                file_sha1 = obj.document_url.split('/')[-2]
+            except IndexError:
+                file_sha1 = ''
+
+            file_path = "group_work/{}/{}/{}".format(
+                obj.workgroup_id,
+                file_sha1,
+                obj.document_filename,
+            )
+
+            return make_temporary_s3_link(file_path=file_path) or obj.document_url
+
+        return obj.document_url
 
 
 class WorkgroupReviewSerializer(serializers.HyperlinkedModelSerializer):
