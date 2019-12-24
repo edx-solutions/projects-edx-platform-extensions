@@ -26,5 +26,5 @@ def make_temporary_s3_link(file_path):
             }
         )
         return signed_url
-    else:
-        return None
+
+    return None
