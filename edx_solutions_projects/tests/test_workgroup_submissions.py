@@ -60,7 +60,8 @@ class SubmissionsApiTests(TestCase, APIClientMixin):
 
         cache.clear()
 
-    def test_submissions_list_post(self):
+    @patch('edx_solutions_projects.serializers.WorkgroupSubmissionSerializer.get_document_url')
+    def test_submissions_list_post(self, mock_get_document_url):
         submission_data = {
             'user': self.test_user.id,
             'workgroup': self.test_workgroup.id,
@@ -68,6 +69,7 @@ class SubmissionsApiTests(TestCase, APIClientMixin):
             'document_url': self.test_document_url,
             'document_mime_type': self.test_document_mime_type,
         }
+        mock_get_document_url.return_value = self.test_document_url
         response = self.do_post(self.test_submissions_uri, submission_data)
         self.assertEqual(response.status_code, 201)
         self.assertGreater(response.data['id'], 0)
@@ -111,7 +113,8 @@ class SubmissionsApiTests(TestCase, APIClientMixin):
         response = self.do_post(self.test_submissions_uri, submission_data)
         self.assertEqual(response.status_code, 400)
 
-    def test_submissions_detail_get(self):
+    @patch('edx_solutions_projects.serializers.WorkgroupSubmissionSerializer.get_document_url')
+    def test_submissions_detail_get(self, mock_get_document_url):
         submission_data = {
             'user': self.test_user.id,
             'workgroup': self.test_workgroup.id,
@@ -120,6 +123,8 @@ class SubmissionsApiTests(TestCase, APIClientMixin):
             'document_mime_type': self.test_document_mime_type,
             'document_filename': self.test_document_filename,
         }
+        mock_get_document_url.return_value = self.test_document_url
+
         response = self.do_post(self.test_submissions_uri, submission_data)
         self.assertEqual(response.status_code, 201)
         test_uri = '{}{}/'.format(self.test_submissions_uri, str(response.data['id']))
@@ -130,6 +135,7 @@ class SubmissionsApiTests(TestCase, APIClientMixin):
             self.test_submissions_uri,
             str(response.data['id'])
         )
+
         self.assertEqual(response.data['url'], confirm_uri)
         self.assertGreater(response.data['id'], 0)
         self.assertEqual(response.data['user'], self.test_user.id)
@@ -171,7 +177,8 @@ class SubmissionsApiTests(TestCase, APIClientMixin):
         # Check if file has been deleted too
         self.assertEqual(delete_file.call_count, 1)
 
-    def test_submissions_reassigned_on_user_delete(self):
+    @patch('edx_solutions_projects.models.WorkgroupSubmission.delete_file')
+    def test_submissions_reassigned_on_user_delete(self, mock_delete_file):
         """Test if removing the submission's owner causes its reassignment to another workgroup member."""
         submission_data = {
             'user': self.test_user.id,
@@ -195,3 +202,6 @@ class SubmissionsApiTests(TestCase, APIClientMixin):
         self.test_workgroup.remove_user(self.test_user2)
         response = self.do_get(test_uri)
         self.assertEqual(response.status_code, 404)
+
+        # Check if file has been deleted too
+        self.assertEqual(mock_delete_file.call_count, 1)
