@@ -60,8 +60,7 @@ class SubmissionsApiTests(TestCase, APIClientMixin):
 
         cache.clear()
 
-    @patch('edx_solutions_projects.serializers.WorkgroupSubmissionSerializer.get_document_url')
-    def test_submissions_list_post(self, mock_get_document_url):
+    def test_submissions_list_post(self):
         submission_data = {
             'user': self.test_user.id,
             'workgroup': self.test_workgroup.id,
@@ -69,7 +68,6 @@ class SubmissionsApiTests(TestCase, APIClientMixin):
             'document_url': self.test_document_url,
             'document_mime_type': self.test_document_mime_type,
         }
-        mock_get_document_url.return_value = self.test_document_url
         response = self.do_post(self.test_submissions_uri, submission_data)
         self.assertEqual(response.status_code, 201)
         self.assertGreater(response.data['id'], 0)
@@ -113,8 +111,7 @@ class SubmissionsApiTests(TestCase, APIClientMixin):
         response = self.do_post(self.test_submissions_uri, submission_data)
         self.assertEqual(response.status_code, 400)
 
-    @patch('edx_solutions_projects.serializers.WorkgroupSubmissionSerializer.get_document_url')
-    def test_submissions_detail_get(self, mock_get_document_url):
+    def test_submissions_detail_get(self):
         submission_data = {
             'user': self.test_user.id,
             'workgroup': self.test_workgroup.id,
@@ -123,7 +120,6 @@ class SubmissionsApiTests(TestCase, APIClientMixin):
             'document_mime_type': self.test_document_mime_type,
             'document_filename': self.test_document_filename,
         }
-        mock_get_document_url.return_value = self.test_document_url
 
         response = self.do_post(self.test_submissions_uri, submission_data)
         self.assertEqual(response.status_code, 201)

@@ -147,7 +147,7 @@ class WorkgroupSubmission(TimeStampedModel):
         """
         :return: the path to the document in default storage
         """
-        return urlparse(unquote(self.document_url)).path.lstrip('/media/')
+        return urlparse(unquote(self.document_url)).path.lstrip('/media/')\
 
     def delete_file(self):
         """

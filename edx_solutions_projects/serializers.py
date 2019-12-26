@@ -67,7 +67,6 @@ class WorkgroupSubmissionSerializer(serializers.HyperlinkedModelSerializer):
     user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
     workgroup = serializers.PrimaryKeyRelatedField(queryset=Workgroup.objects.all())
     reviews = serializers.PrimaryKeyRelatedField(many=True, queryset=WorkgroupReview.objects.all(), required=False)
-    document_url = serializers.SerializerMethodField()
 
     class Meta:
         """ Meta class for defining additional serializer characteristics """
@@ -78,25 +77,30 @@ class WorkgroupSubmissionSerializer(serializers.HyperlinkedModelSerializer):
             'user', 'workgroup', 'reviews'
         )
 
-    def get_document_url(self, obj):
+    def to_representation(self, instance):
         """
         Create a temporary S3 link in case of S3 URL
         """
-        if 's3.amazonaws.com' in obj.document_url:
+        ret = super(WorkgroupSubmissionSerializer, self).to_representation(instance)
+
+        if 's3.amazonaws.com' in ret.get('document_url'):
             try:
-                file_sha1 = obj.document_url.split('/')[-2]
+                file_sha1 = ret['document_url'].split('/')[-2]
             except IndexError:
-                file_sha1 = ''
+                return ret
 
             file_path = "group_work/{}/{}/{}".format(
-                obj.workgroup_id,
+                ret['workgroup'],
                 file_sha1,
-                obj.document_filename,
+                ret['document_filename'],
             )
 
-            return make_temporary_s3_link(file_path=file_path) or obj.document_url
+            temp_s3_link = make_temporary_s3_link(file_path=file_path)
 
-        return obj.document_url
+            if temp_s3_link is not None:
+                ret['document_url'] = temp_s3_link
+
+        return ret
 
 
 class WorkgroupReviewSerializer(serializers.HyperlinkedModelSerializer):
