@@ -81,26 +81,26 @@ class WorkgroupSubmissionSerializer(serializers.HyperlinkedModelSerializer):
         """
         Create a temporary S3 link in case of S3 URL
         """
-        ret = super(WorkgroupSubmissionSerializer, self).to_representation(instance)
+        response = super(WorkgroupSubmissionSerializer, self).to_representation(instance)
 
-        if 's3.amazonaws.com' in ret.get('document_url'):
+        if 's3.amazonaws.com' in response.get('document_url'):
             try:
-                file_sha1 = ret['document_url'].split('/')[-2]
+                file_sha1 = response['document_url'].split('/')[-2]
             except IndexError:
-                return ret
+                return response
 
             file_path = "group_work/{}/{}/{}".format(
-                ret['workgroup'],
+                response['workgroup'],
                 file_sha1,
-                ret['document_filename'],
+                response['document_filename'],
             )
 
             temp_s3_link = make_temporary_s3_link(file_path=file_path)
 
             if temp_s3_link is not None:
-                ret['document_url'] = temp_s3_link
+                response['document_url'] = temp_s3_link
 
-        return ret
+        return response
 
 
 class WorkgroupReviewSerializer(serializers.HyperlinkedModelSerializer):
