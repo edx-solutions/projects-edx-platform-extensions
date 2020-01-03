@@ -175,7 +175,7 @@ class PeerReviewsApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertIsNotNone(response.data['modified'])
 
     def test_peer_reviews_detail_get_undefined(self):
-        test_uri = '{}/123456789/'.format(self.test_peer_reviews_uri)
+        test_uri = '{}123456789/'.format(self.test_peer_reviews_uri)
         response = self.do_get(test_uri)
         self.assertEqual(response.status_code, 404)
 

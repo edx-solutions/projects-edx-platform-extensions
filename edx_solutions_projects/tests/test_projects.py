@@ -197,7 +197,7 @@ class ProjectsApiTests(TestCase, APIClientMixin):
         self.assertEqual(response.status_code, 400)
 
     def test_projects_detail_get_undefined(self):
-        test_uri = '{}/123456789/'.format(self.test_projects_uri)
+        test_uri = '{}123456789/'.format(self.test_projects_uri)
         response = self.do_get(test_uri)
         self.assertEqual(response.status_code, 404)
 

@@ -22,6 +22,7 @@ class ProjectsReceiversTests(ModuleStoreTestCase):
     """ Test suite for signal receivers """
 
     MODULESTORE = TEST_DATA_SPLIT_MODULESTORE
+    ENABLED_SIGNALS = ['course_deleted']
 
     def setUp(self):
         super(ProjectsReceiversTests, self).setUp()
