@@ -2,8 +2,10 @@ import boto3
 
 from django.conf import settings
 
+HOUR = 60 * 60
+DAY = 24 * HOUR
 
-S3_FILE_URL_TIMEOUT = 60 * 30  # 30 minutes
+S3_FILE_URL_TIMEOUT = 14 * DAY
 
 
 def make_temporary_s3_link(file_path):
