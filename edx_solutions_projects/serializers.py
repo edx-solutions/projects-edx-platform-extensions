@@ -162,6 +162,10 @@ class WorkgroupSerializer(serializers.HyperlinkedModelSerializer):
         )
 
 
+class WorkgroupDetailsSerializer(WorkgroupSerializer):
+    submissions = WorkgroupSubmissionSerializer(many=True, read_only=True)
+
+
 class BasicWorkgroupSerializer(serializers.HyperlinkedModelSerializer):
     """ Basic Workgroup Serializer to keep only basic fields """
 

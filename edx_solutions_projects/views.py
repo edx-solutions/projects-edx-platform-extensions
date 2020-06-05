@@ -28,7 +28,7 @@ from openedx.core.djangoapps.course_groups.cohorts import (
 
 from .models import Project, Workgroup, WorkgroupSubmission
 from .models import WorkgroupReview, WorkgroupSubmissionReview, WorkgroupPeerReview
-from .serializers import UserSerializer, GroupSerializer
+from .serializers import UserSerializer, GroupSerializer, WorkgroupDetailsSerializer
 from .serializers import ProjectSerializer, WorkgroupSerializer, WorkgroupSubmissionSerializer
 from .serializers import WorkgroupReviewSerializer, WorkgroupSubmissionReviewSerializer, WorkgroupPeerReviewSerializer
 
@@ -313,10 +313,14 @@ class ProjectsViewSet(SecureModelViewSet):
         """
         if request.method == 'GET':
             workgroups = Workgroup.objects.filter(project=pk)
+            serializer_cls = WorkgroupSerializer
+            if 'details' in request.query_params:
+                serializer_cls = WorkgroupDetailsSerializer
+                workgroups = workgroups.prefetch_related('submissions')
             response_data = []
             if workgroups:
                 for workgroup in workgroups:
-                    serializer = WorkgroupSerializer(workgroup, context={'request': request})
+                    serializer = serializer_cls(workgroup, context={'request': request})
                     response_data.append(serializer.data)  # pylint: disable=E1101
             return Response(response_data, status=status.HTTP_200_OK)
         else:
