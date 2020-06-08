@@ -358,6 +358,24 @@ class ProjectsViewSet(SecureModelViewSet):
                 'not_enrolled_users': list(not_enrolled_users)
             }, status=status.HTTP_400_BAD_REQUEST)
 
+        workgroups = Workgroup.objects.filter(name__in=list(groups), project=project)
+        workgroups = {w.name: w for w in workgroups}
+        new_workgroups = []
+        for group in groups:
+            if group not in workgroups:
+                new_workgroups += [
+                    Workgroup(name=group, project=project)
+                ]
+
+        if new_workgroups:
+            Workgroup.objects.bulk_create(new_workgroups)
+
+        all_workgroups = Workgroup.objects.filter(name__in=list(groups), project=project)
+        for workgroup in all_workgroups:
+            if workgroup.name not in workgroups:
+                add_cohort(course_key, workgroup.cohort_name, CourseCohort.RANDOM)
+                workgroups[workgroup.name] = workgroup
+
         return Response({}, status=status.HTTP_201_CREATED)
 
 
