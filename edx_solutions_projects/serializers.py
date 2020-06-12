@@ -162,8 +162,34 @@ class WorkgroupSerializer(serializers.HyperlinkedModelSerializer):
         )
 
 
-class WorkgroupDetailsSerializer(WorkgroupSerializer):
+class OrganizationSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta(object):
+        """ Meta class for defining additional serializer characteristics """
+        model = Organization
+        fields = ('id', 'display_name')
+
+
+class UserDetailsSerializer(serializers.HyperlinkedModelSerializer):
+    organizations = OrganizationSerializer(many=True, required=False)
+
+    class Meta(object):
+        """ Meta class for defining additional serializer characteristics """
+        model = User
+        fields = ('id', 'url', 'username', 'email', 'first_name', 'last_name', 'organizations')
+
+
+class WorkgroupDetailsSerializer(serializers.HyperlinkedModelSerializer):
     submissions = WorkgroupSubmissionSerializer(many=True, read_only=True)
+    project = serializers.PrimaryKeyRelatedField(queryset=Project.objects.all())
+    users = UserDetailsSerializer(many=True, required=False)
+
+    class Meta:
+        """ Meta class for defining additional serializer characteristics """
+        model = Workgroup
+        fields = (
+            'id', 'url', 'created', 'modified', 'name', 'project',
+            'users', 'submissions',
+        )
 
 
 class BasicWorkgroupSerializer(serializers.HyperlinkedModelSerializer):
