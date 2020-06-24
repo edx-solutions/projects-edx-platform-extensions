@@ -204,6 +204,16 @@ class WorkgroupsViewSet(viewsets.ModelViewSet):
         return Response(response_data, status=status.HTTP_200_OK)
 
     @detail_route(methods=['get'])
+    def score(self, request, pk):
+        """
+        View final score for a specific Workgroup
+        """
+        child_key = UsageKey.from_string(self.request.query_params.get('content_id'))
+        descriptor = modulestore().get_item(child_key)
+        score = descriptor.calculate_grade(group_id=pk)
+        return Response({'score': score}, status=status.HTTP_200_OK)
+
+    @detail_route(methods=['get'])
     def submissions(self, request, pk):
         """
         View Submissions for a specific Workgroup
