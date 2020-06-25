@@ -208,7 +208,10 @@ class WorkgroupsViewSet(viewsets.ModelViewSet):
         """
         View final score for a specific Workgroup
         """
-        child_key = UsageKey.from_string(self.request.query_params.get('content_id'))
+        content_id = self.request.query_params.get('content_id', None)
+        if not content_id:
+            return Response({'detail': 'Query string for "content_id" is required.'})
+        child_key = UsageKey.from_string(content_id)
         descriptor = modulestore().get_item(child_key)
         score = descriptor.calculate_grade(group_id=pk)
         return Response({'score': score}, status=status.HTTP_200_OK)
