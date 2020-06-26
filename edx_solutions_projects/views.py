@@ -2,31 +2,24 @@
 # pylint: disable=W0613
 
 """ WORKGROUPS API VIEWS """
-from django.db.models import Q
-from django.db.models.signals import pre_delete, post_delete
-from edx_solutions_projects.receivers import reassign_or_delete_submissions, delete_empty_workgroup
-
-from common.test.utils import skip_signal
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import Group, User
 from django.db import transaction
 from django.utils.decorators import method_decorator
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
-from eventtracking import tracker
 
 from rest_framework import viewsets
 from rest_framework.decorators import detail_route
 from rest_framework import status
 from rest_framework.response import Response
 
-from lms.djangoapps.courseware import courses
 from lms.djangoapps.grades.signals.signals import SCORE_PUBLISHED
-from openedx.core.djangoapps.course_groups.models import CourseCohort, CourseUserGroup, CohortMembership
+from openedx.core.djangoapps.course_groups.models import CourseCohort
 
 from edx_solutions_api_integration.permissions import SecureModelViewSet
 from edx_solutions_api_integration.courseware_access import get_course_key
 from courseware.courses import get_course
-from opaque_keys.edx.keys import UsageKey
+from opaque_keys.edx.keys import CourseKey, UsageKey
 from opaque_keys import InvalidKeyError
 from xmodule.modulestore.django import modulestore
 from openedx.core.djangoapps.course_groups.cohorts import (
@@ -34,7 +27,7 @@ from openedx.core.djangoapps.course_groups.cohorts import (
 )
 from student.models import CourseEnrollment
 
-from .models import Project, Workgroup, WorkgroupSubmission, WorkgroupUser
+from .models import Project, Workgroup, WorkgroupSubmission
 from .models import WorkgroupReview, WorkgroupSubmissionReview, WorkgroupPeerReview
 from .serializers import UserSerializer, GroupSerializer, WorkgroupDetailsSerializer
 from .serializers import ProjectSerializer, WorkgroupSerializer, WorkgroupSubmissionSerializer
@@ -324,7 +317,7 @@ class ProjectsViewSet(SecureModelViewSet):
             serializer_cls = WorkgroupSerializer
             if 'details' in request.query_params:
                 serializer_cls = WorkgroupDetailsSerializer
-                workgroups = workgroups.prefetch_related('submissions', 'users', 'users__organizations')
+                workgroups.prefetch_related('submissions', 'users', 'users__organizations')
             response_data = []
             if workgroups:
                 for workgroup in workgroups:
@@ -344,181 +337,46 @@ class ProjectsViewSet(SecureModelViewSet):
             return Response({}, status=status.HTTP_201_CREATED)
 
     @detail_route(methods=['post'])
-    @method_decorator(transaction.non_atomic_requests)
     def workgroups_bulk(self, request, pk):
-        self.project = Project.objects.filter(pk=pk).first()
-        if not self.project:
+        project = Project.objects.filter(pk=pk).first()
+        if not project:
             return Response({}, status=status.HTTP_404_NOT_FOUND)
 
-        self.course_key = get_course_key(self.project.course_id)
-        self.groups = request.data.get('groups', {})
-        users = sum(list(self.groups.values()), [])
+        course_key = get_course_key(project.course_id)
+        groups = request.data.get('groups', {})
+        users = sum(list(groups.values()), [])
         users = [u.lower() for u in users]
         enrollments = CourseEnrollment.objects.filter(
-            course_id=self.course_key,
+            course_id=course_key,
             is_active=True,
             user__email__in=users
-        ).values_list('user__id', 'user__email')
-
-        self.enrolled_users = {u.lower(): i for i, u in enrollments}
-        not_enrolled_users = set(users) - set(self.enrolled_users)
+        ).values_list('id', 'user__email')
+        enrolled_users = {u.lower(): i for i, u in enrollments}
+        not_enrolled_users = set(users) - set(enrolled_users)
         if not_enrolled_users:
             return Response({
                 'not_enrolled_users': list(not_enrolled_users)
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        self.user_ids = list(self.enrolled_users.values())
-
-        # Delete and recreate workgroups
-        self._delete_groups()
-        self._create_new_workgroups()
-
-        # Delete and recreate cohort groups and memberships
-        workgroups = self._get_workgroups()
-        memberships, user_group = self._get_course_membership_and_groups(workgroups)
-        self._delete_cohort_groups_and_users(memberships)
-        self._create_cohort_groups_and_memberships(workgroups, user_group, memberships)
-        return Response({}, status=status.HTTP_201_CREATED)
-
-    def _create_new_workgroups(self):
-        workgroups = self._get_workgroups()
-        # Create workgroups that are not already in DB.
+        workgroups = Workgroup.objects.filter(name__in=list(groups), project=project)
+        workgroups = {w.name: w for w in workgroups}
         new_workgroups = []
-        for group in self.groups:
+        for group in groups:
             if group not in workgroups:
-                new_workgroups += [Workgroup(name=group, project=self.project)]
+                new_workgroups += [
+                    Workgroup(name=group, project=project)
+                ]
 
         if new_workgroups:
             Workgroup.objects.bulk_create(new_workgroups)
 
-        all_workgroups = self._get_workgroups()
-        self._add_workgroups_to_cohorts(all_workgroups, workgroups)
+        all_workgroups = Workgroup.objects.filter(name__in=list(groups), project=project)
+        for workgroup in all_workgroups:
+            if workgroup.name not in workgroups:
+                add_cohort(course_key, workgroup.cohort_name, CourseCohort.RANDOM)
+                workgroups[workgroup.name] = workgroup
 
-    def _create_cohort_groups_and_memberships(self, workgroups, user_group, memberships):
-        GroupUserModel = CourseUserGroup.users.through._meta.model
-        new_workgroup_users = []
-        new_cohort_memberships = []
-        new_cohort_group_users = []
-        for group, users in self.groups.items():
-            for email in users:
-                user_id = self.enrolled_users[email.lower()]
-                wg = workgroups[group]
-                workgroup_id = wg['id']
-                cohort_name = wg['cohort_name']
-                user_group_id = user_group[cohort_name]
-                new_workgroup_users += [WorkgroupUser(workgroup_id=workgroup_id, user_id=user_id)]
-                new_cohort_memberships += [CohortMembership(
-                    course_user_group_id=user_group_id,
-                    user_id=user_id,
-                    course_id=self.course_key
-                )]
-                new_cohort_group_users += [GroupUserModel(courseusergroup_id=user_group_id, user_id=user_id)]
-
-                membership = memberships.get(user_id, {})
-                tracker.emit(
-                    "edx.cohort.user_add_requested",
-                    {
-                        "user_id": user_id,
-                        "cohort_id": user_group_id,
-                        "cohort_name": cohort_name,
-                        "previous_cohort_id": membership.get('id'),
-                        "previous_cohort_name": membership.get('name'),
-                    }
-                )
-
-        if new_workgroup_users:
-            WorkgroupUser.objects.bulk_create(new_workgroup_users)
-        if new_cohort_memberships:
-            CohortMembership.objects.bulk_create(new_cohort_memberships)
-        if new_cohort_group_users:
-            GroupUserModel.objects.bulk_create(new_cohort_group_users)
-
-    def _add_workgroups_to_cohorts(self, all_workgroups, workgroups):
-        course = courses.get_course_by_id(self.course_key)
-        course_id = course.id
-        cohorts = [w['cohort_name'] for w in all_workgroups.values()if w['name'] not in workgroups]
-        objects = []
-        for cohort_name in cohorts:
-            cug = CourseUserGroup(name=cohort_name, course_id=course_id, group_type=CourseUserGroup.COHORT)
-            objects += [cug]
-        if objects:
-            CourseUserGroup.objects.bulk_create(objects)
-
-        user_groups = CourseUserGroup.objects.filter(
-            name__in=cohorts,
-            course_id=course_id,
-            group_type=CourseUserGroup.COHORT
-        ).values_list('name', 'id')
-        user_groups = dict(user_groups)
-
-        objects = []
-        for cohort_name in cohorts:
-            course_user_group = user_groups[cohort_name]
-            cc = CourseCohort(course_user_group_id=course_user_group, assignment_type=CourseCohort.RANDOM)
-            objects += [cc]
-
-        if objects:
-            CourseCohort.objects.bulk_create(objects)
-
-    def _get_workgroups(self):
-        raw_workgroups = Workgroup.objects.filter(
-            name__in=list(self.groups),
-            project=self.project
-        ).values('id', 'project_id', 'name')
-
-        workgroups = {}
-        for workgroup in raw_workgroups:
-            project_id = workgroup['project_id']
-            workgroup_id = workgroup['id']
-            workgroup_name = workgroup['name']
-            workgroup['cohort_name'] = Workgroup.cohort_name_for_workgroup(
-                project_id, workgroup_id, workgroup_name
-            )
-            workgroups[workgroup_name] = workgroup
-
-        return workgroups
-
-    def _get_course_membership_and_groups(self, workgroups):
-        user_groups = CourseUserGroup.objects.filter(
-            course_id=self.course_key,
-            group_type=CourseUserGroup.COHORT,
-            name__in=[w['cohort_name'] for w in workgroups.values()]
-        ).values_list('id', 'name')
-        user_group = {n: i for i, n in user_groups}
-
-        memberships = CohortMembership.objects.filter(
-            course_id=self.course_key,
-            user_id__in=self.user_ids
-        ).values_list(
-            'user_id',
-            'course_user_group_id',
-            'course_user_group__name'
-        )
-        memberships = {u: {'id': m, 'name': n} for u, m, n in memberships}
-        return memberships, user_group
-
-    def _delete_groups(self):
-        with skip_signal(pre_delete, receiver=reassign_or_delete_submissions, sender=WorkgroupUser):
-            with skip_signal(post_delete, receiver=delete_empty_workgroup, sender=WorkgroupUser):
-                Workgroup.objects.filter(name__in=list(self.groups), project=self.project).delete()
-
-        WorkgroupUser.objects.filter(
-            user__in=list(self.enrolled_users.values()),
-            workgroup__project__course_id=self.course_key
-        ).delete()
-
-    def _delete_cohort_groups_and_users(self, memberships):
-        GroupUserModel = CourseUserGroup.users.through._meta.model
-        q = Q()
-        for user_id, group in memberships.items():
-            q |= Q(courseusergroup_id=group['id'], user_id=user_id)
-        GroupUserModel.objects.filter(q).delete()
-        from openedx.core.djangoapps.course_groups.models import remove_user_from_cohort as ch_signal
-        with skip_signal(pre_delete, receiver=ch_signal, sender=CohortMembership):
-            CohortMembership.objects.filter(
-                course_id=self.course_key,
-                user_id__in=self.user_ids
-            ).delete()
+        return Response({}, status=status.HTTP_201_CREATED)
 
 
 class WorkgroupSubmissionsViewSet(viewsets.ModelViewSet):
