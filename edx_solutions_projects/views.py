@@ -316,7 +316,7 @@ class ProjectsViewSet(SecureModelViewSet):
             serializer_cls = WorkgroupSerializer
             if 'details' in request.query_params:
                 serializer_cls = WorkgroupDetailsSerializer
-                workgroups.prefetch_related('submissions', 'users', 'users__organizations')
+                workgroups = workgroups.prefetch_related('submissions')
             response_data = []
             if workgroups:
                 for workgroup in workgroups:
