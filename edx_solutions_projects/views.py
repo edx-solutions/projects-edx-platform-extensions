@@ -19,7 +19,7 @@ from openedx.core.djangoapps.course_groups.models import CourseCohort
 from edx_solutions_api_integration.permissions import SecureModelViewSet
 from edx_solutions_api_integration.courseware_access import get_course_key
 from courseware.courses import get_course
-from opaque_keys.edx.keys import UsageKey
+from opaque_keys.edx.keys import CourseKey, UsageKey
 from opaque_keys import InvalidKeyError
 from xmodule.modulestore.django import modulestore
 from openedx.core.djangoapps.course_groups.cohorts import (
