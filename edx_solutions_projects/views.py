@@ -25,7 +25,6 @@ from xmodule.modulestore.django import modulestore
 from openedx.core.djangoapps.course_groups.cohorts import (
     add_cohort, add_user_to_cohort, get_cohort_by_name, remove_user_from_cohort,
 )
-from student.models import CourseEnrollment
 
 from .models import Project, Workgroup, WorkgroupSubmission
 from .models import WorkgroupReview, WorkgroupSubmissionReview, WorkgroupPeerReview
@@ -335,30 +334,6 @@ class ProjectsViewSet(SecureModelViewSet):
             project.workgroups.add(workgroup)
             project.save()
             return Response({}, status=status.HTTP_201_CREATED)
-
-    @detail_route(methods=['post'])
-    def workgroups_bulk(self, request, pk):
-        project = Project.objects.filter(pk=pk).first()
-        if not project:
-            return Response({}, status=status.HTTP_404_NOT_FOUND)
-
-        course_key = get_course_key(project.course_id)
-        groups = request.data.get('groups', {})
-        users = sum(list(groups.values()), [])
-        users = [u.lower() for u in users]
-        enrollments = CourseEnrollment.objects.filter(
-            course_id=course_key,
-            is_active=True,
-            user__email__in=users
-        ).values_list('id', 'user__email')
-        enrolled_users = {u.lower(): i for i, u in enrollments}
-        not_enrolled_users = set(users) - set(enrolled_users)
-        if not_enrolled_users:
-            return Response({
-                'not_enrolled_users': list(not_enrolled_users)
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        return Response({}, status=status.HTTP_201_CREATED)
 
 
 class WorkgroupSubmissionsViewSet(viewsets.ModelViewSet):
