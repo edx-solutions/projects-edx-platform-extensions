@@ -19,7 +19,7 @@ from openedx.core.djangoapps.course_groups.models import CourseCohort
 from edx_solutions_api_integration.permissions import SecureModelViewSet
 from edx_solutions_api_integration.courseware_access import get_course_key
 from courseware.courses import get_course
-from opaque_keys.edx.keys import CourseKey, UsageKey
+from opaque_keys.edx.keys import UsageKey
 from opaque_keys import InvalidKeyError
 from xmodule.modulestore.django import modulestore
 from openedx.core.djangoapps.course_groups.cohorts import (
@@ -210,10 +210,12 @@ class WorkgroupsViewSet(viewsets.ModelViewSet):
         """
         block_id = self.request.query_params.get('block_id', None)
         if not block_id:
-            raise ValidationError('Query string for "block_id" is required.')
+            message = 'Query string for "block_id" is required.'
+            return Response({'detail': message}, status=status.HTTP_400_BAD_REQUEST)
         child_key = UsageKey.from_string(block_id)
         if child_key.category != 'gp-v2-activity':
-            raise ValidationError('The "block_id" should point to a "gp-v2-activity" block.')
+            message = 'The "block_id" should point to a "gp-v2-activity" block.'
+            return Response({'detail': message}, status=status.HTTP_400_BAD_REQUEST)
         descriptor = modulestore().get_item(child_key)
         score = descriptor.calculate_grade(group_id=pk)
         return Response({'score': score}, status=status.HTTP_200_OK)
