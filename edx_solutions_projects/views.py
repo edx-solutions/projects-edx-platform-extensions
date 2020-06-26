@@ -208,10 +208,12 @@ class WorkgroupsViewSet(viewsets.ModelViewSet):
         """
         View final score for a specific Workgroup
         """
-        content_id = self.request.query_params.get('content_id', None)
-        if not content_id:
-            return Response({'detail': 'Query string for "content_id" is required.'})
-        child_key = UsageKey.from_string(content_id)
+        block_id = self.request.query_params.get('block_id', None)
+        if not block_id:
+            raise ValidationError('Query string for "block_id" is required.')
+        child_key = UsageKey.from_string(block_id)
+        if child_key.category != 'gp-v2-activity':
+            raise ValidationError('The "block_id" should point to a "gp-v2-activity" block.')
         descriptor = modulestore().get_item(child_key)
         score = descriptor.calculate_grade(group_id=pk)
         return Response({'score': score}, status=status.HTTP_200_OK)
