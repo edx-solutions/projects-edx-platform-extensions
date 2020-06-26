@@ -204,6 +204,23 @@ class WorkgroupsViewSet(viewsets.ModelViewSet):
         return Response(response_data, status=status.HTTP_200_OK)
 
     @detail_route(methods=['get'])
+    def score(self, request, pk):
+        """
+        View final score for a specific Workgroup
+        """
+        block_id = self.request.query_params.get('block_id', None)
+        if not block_id:
+            message = 'Query string for "block_id" is required.'
+            return Response({'detail': message}, status=status.HTTP_400_BAD_REQUEST)
+        child_key = UsageKey.from_string(block_id)
+        if child_key.category != 'gp-v2-activity':
+            message = 'The "block_id" should point to a "gp-v2-activity" block.'
+            return Response({'detail': message}, status=status.HTTP_400_BAD_REQUEST)
+        descriptor = modulestore().get_item(child_key)
+        score = descriptor.calculate_grade(group_id=pk)
+        return Response({'score': score}, status=status.HTTP_200_OK)
+
+    @detail_route(methods=['get'])
     def submissions(self, request, pk):
         """
         View Submissions for a specific Workgroup
