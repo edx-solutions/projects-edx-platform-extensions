@@ -14,7 +14,6 @@ from django.utils.decorators import method_decorator
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from eventtracking import tracker
 
-from rest_framework import viewsets
 from rest_framework.decorators import detail_route
 from rest_framework import status
 from rest_framework.response import Response
@@ -41,23 +40,7 @@ from .serializers import ProjectSerializer, WorkgroupSerializer, WorkgroupSubmis
 from .serializers import WorkgroupReviewSerializer, WorkgroupSubmissionReviewSerializer, WorkgroupPeerReviewSerializer
 
 
-class GroupViewSet(viewsets.ModelViewSet):
-    """
-    Django Rest Framework ViewSet for the Group model (auth_group).
-    """
-    serializer_class = GroupSerializer
-    queryset = Group.objects.all()
-
-
-class UserViewSet(viewsets.ModelViewSet):
-    """
-    Django Rest Framework ViewSet for the User model (auth_user).
-    """
-    serializer_class = UserSerializer
-    queryset = User.objects.all()
-
-
-class WorkgroupsViewSet(viewsets.ModelViewSet):
+class WorkgroupsViewSet(SecureModelViewSet):
     """
     Django Rest Framework ViewSet for the Workgroup model.
     """
@@ -521,7 +504,7 @@ class ProjectsViewSet(SecureModelViewSet):
             ).delete()
 
 
-class WorkgroupSubmissionsViewSet(viewsets.ModelViewSet):
+class WorkgroupSubmissionsViewSet(SecureModelViewSet):
     """
     Django Rest Framework ViewSet for the Submission model.
     """
@@ -529,7 +512,7 @@ class WorkgroupSubmissionsViewSet(viewsets.ModelViewSet):
     queryset = WorkgroupSubmission.objects.all()
 
 
-class WorkgroupReviewsViewSet(viewsets.ModelViewSet):
+class WorkgroupReviewsViewSet(SecureModelViewSet):
     """
     Django Rest Framework ViewSet for the ProjectReview model.
     """
@@ -537,7 +520,7 @@ class WorkgroupReviewsViewSet(viewsets.ModelViewSet):
     queryset = WorkgroupReview.objects.all()
 
 
-class WorkgroupSubmissionReviewsViewSet(viewsets.ModelViewSet):
+class WorkgroupSubmissionReviewsViewSet(SecureModelViewSet):
     """
     Django Rest Framework ViewSet for the SubmissionReview model.
     """
@@ -545,7 +528,7 @@ class WorkgroupSubmissionReviewsViewSet(viewsets.ModelViewSet):
     queryset = WorkgroupSubmissionReview.objects.all()
 
 
-class WorkgroupPeerReviewsViewSet(viewsets.ModelViewSet):
+class WorkgroupPeerReviewsViewSet(SecureModelViewSet):
     """
     Django Rest Framework ViewSet for the PeerReview model.
     """
