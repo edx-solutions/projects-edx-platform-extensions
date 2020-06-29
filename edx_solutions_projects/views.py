@@ -40,6 +40,22 @@ from .serializers import ProjectSerializer, WorkgroupSerializer, WorkgroupSubmis
 from .serializers import WorkgroupReviewSerializer, WorkgroupSubmissionReviewSerializer, WorkgroupPeerReviewSerializer
 
 
+class GroupViewSet(SecureModelViewSet):
+    """
+    Django Rest Framework ViewSet for the Group model (auth_group).
+    """
+    serializer_class = GroupSerializer
+    queryset = Group.objects.all()
+
+
+class UserViewSet(SecureModelViewSet):
+    """
+    Django Rest Framework ViewSet for the User model (auth_user).
+    """
+    serializer_class = UserSerializer
+    queryset = User.objects.all()
+
+
 class WorkgroupsViewSet(SecureModelViewSet):
     """
     Django Rest Framework ViewSet for the Workgroup model.
