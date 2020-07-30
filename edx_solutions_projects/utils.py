@@ -1,5 +1,6 @@
-import boto3
+from contextlib import contextmanager
 
+import boto3
 from django.conf import settings
 
 HOUR = 60 * 60
@@ -30,3 +31,14 @@ def make_temporary_s3_link(file_path):
         return signed_url
 
     return None
+
+
+@contextmanager
+def skip_signal(signal, **kwargs):
+    """
+    ContextManager to skip a signal by disconnecting it, yielding,
+    and then reconnecting the signal.
+    """
+    signal.disconnect(**kwargs)
+    yield
+    signal.connect(**kwargs)
