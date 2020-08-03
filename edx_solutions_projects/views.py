@@ -6,7 +6,7 @@ from django.db.models import Q
 from django.db.models.signals import pre_delete, post_delete
 from edx_solutions_projects.receivers import reassign_or_delete_submissions, delete_empty_workgroup
 
-from common.test.utils import skip_signal
+from .utils import skip_signal
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import Group, User
 from django.db import transaction
