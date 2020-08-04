@@ -83,6 +83,18 @@ class WorkgroupsViewSet(SecureModelViewSet):
 
         return response
 
+    def destroy(self, request, pk):
+        """
+        Delete a workgroup and its cohort.
+        """
+        work_group = self.get_object()
+        course_key = get_course_key(work_group.project.course_id)
+        cohort = get_cohort_by_name(course_key, work_group.cohort_name)
+        response = super(WorkgroupsViewSet, self).destroy(request, pk)
+        if response.status_code == status.HTTP_204_NO_CONTENT:
+            cohort.delete()
+        return response
+
     @detail_route(methods=['get', 'post'])
     def groups(self, request, pk):
         """
