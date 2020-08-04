@@ -92,11 +92,6 @@ class WorkgroupsViewSet(SecureModelViewSet):
         cohort = get_cohort_by_name(course_key, work_group.cohort_name)
         response = super(WorkgroupsViewSet, self).destroy(request, pk)
         if response.status_code == status.HTTP_204_NO_CONTENT:
-            WorkgroupUser.objects.filter(workgroup_id=pk).delete()
-            CohortMembership.objects.filter(
-                course_user_group_id=cohort.id,
-                course_id=course_key
-            ).delete()
             cohort.delete()
         return response
 
