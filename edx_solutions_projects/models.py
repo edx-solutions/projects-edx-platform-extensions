@@ -124,6 +124,7 @@ class WorkgroupReview(TimeStampedModel):
     """
     workgroup = models.ForeignKey(Workgroup, related_name="workgroup_reviews")
     reviewer = models.CharField(max_length=255)  # AnonymousUserId
+    submitter = models.CharField(max_length=255, null=True, blank=True)  # AnonymousUserId
     question = models.CharField(max_length=1024)
     answer = models.TextField()
     content_id = models.CharField(max_length=255, null=True, blank=True)
