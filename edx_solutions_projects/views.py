@@ -219,7 +219,7 @@ class WorkgroupsViewSet(SecureModelViewSet):
         group_names = [group for group in queryset.values_list('name', flat=True) if re.findall(r'^Group \d+$', group)]
         last_group_id = max([int(name.split()[-1]) for name in group_names] or [0])
 
-        return Response({'project_id': project_id, 'last_group_id': last_group_id})
+        return Response({'last_group_id': last_group_id})
 
     @detail_route(methods=['get'])
     def workgroup_reviews(self, request, pk):
