@@ -197,11 +197,12 @@ class WorkgroupsViewSet(SecureModelViewSet):
 
     @list_route(methods=['get'])
     def last_group_id(self, request):
-        project_id = request.query_params.get('project_id', '')
+        project_id = request.query_params.get('project_id')
 
-        queryset = self.queryset
-        if project_id:
-            queryset = queryset.filter(project_id=int(project_id))
+        if not project_id:
+            return Response({"detail": 'project_id param is required'}, status.HTTP_400_BAD_REQUEST)
+
+        queryset = self.queryset.filter(project_id=int(project_id))
 
         group_names = [group for group in queryset.values_list('name', flat=True) if re.findall(r'^Group \d+$', group)]
         last_group_id = max([int(name.split()[-1]) for name in group_names] or [0])
