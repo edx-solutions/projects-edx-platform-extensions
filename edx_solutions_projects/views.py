@@ -34,6 +34,7 @@ from openedx.core.djangoapps.course_groups.cohorts import (
     add_cohort, add_user_to_cohort, get_cohort_by_name, remove_user_from_cohort,
 )
 from student.models import CourseEnrollment
+from student.roles import CourseAccessRole, CourseAssistantRole
 
 from .models import Project, Workgroup, WorkgroupSubmission, WorkgroupUser
 from .models import WorkgroupReview, WorkgroupSubmissionReview, WorkgroupPeerReview
@@ -386,6 +387,35 @@ class ProjectsViewSet(SecureModelViewSet):
             project.workgroups.add(workgroup)
             project.save()
             return Response({}, status=status.HTTP_201_CREATED)
+
+    @detail_route(methods=['post'])
+    def validate(self, request, pk):
+        project = Project.objects.filter(pk=pk).first()
+        if not project:
+            return Response({}, status=status.HTTP_404_NOT_FOUND)
+        course_key = get_course_key(project.course_id)
+
+        ta_emails = request.data.get('ta_emails', [])
+        ta_access_emails = CourseAccessRole.objects.filter(
+            user__email__in=ta_emails,
+            role=CourseAssistantRole.ROLE,
+            course_id=course_key,
+            org=course_key.org,
+        ).values_list('user__email', flat=True)
+        not_ta_access = set(ta_emails) - set(ta_access_emails)
+        errors = {}
+        if not_ta_access:
+            errors['not_ta_access'] = list(not_ta_access)
+
+        groups = request.data.get('groups', [])
+        existing = Workgroup.objects.filter(name__in=groups, project=project).values_list('name', flat=True)
+        non_existing_groups = set(groups) - set(existing)
+        if non_existing_groups:
+            errors['non_existing_groups'] = list(non_existing_groups)
+
+        if errors:
+            return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(errors, status=status.HTTP_200_OK)
 
     @detail_route(methods=['post'])
     @method_decorator(transaction.non_atomic_requests)
