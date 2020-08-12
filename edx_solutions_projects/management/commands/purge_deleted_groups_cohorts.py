@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 
 from edx_solutions_api_integration.courseware_access import get_course_key
-from edx_solutions_projects.models import Project
+from edx_solutions_projects.models import Workgroup
 
 from openedx.core.djangoapps.course_groups.models import CourseUserGroup
 
@@ -26,21 +26,15 @@ class Command(BaseCommand):
 
             # Default cohort must exclude e.g default_cohort
             exclude_cohorts = [CourseUserGroup.default_cohort_name]
-            projects = Project.objects.filter(course_id__in=courses).prefetch_related('workgroups')
-            for project in projects:
-                for work_group in project.workgroups.all():
-                    if work_group.project.course_id in courses:
-                        exclude_cohorts.append(work_group.cohort_name)
-
-            total_obsoleted_cohorts = 0
+            workgroups = Workgroup.objects.filter(project__course_id__in=courses)
+            for work_group in workgroups:
+                exclude_cohorts.append(work_group.cohort_name)
             obsoleted_cohorts = CourseUserGroup.objects.filter(
                 course_id__in=course_keys,
                 group_type=CourseUserGroup.COHORT
             ).exclude(name__in=exclude_cohorts)
-            total_obsoleted_cohorts = obsoleted_cohorts.count()
             obsoleted_cohorts.delete()
         except Exception as e:
             self.stderr.write(self.style.ERROR('Task failed to trigger with exception: "%s"' % str(e)))
         else:
-            self.stdout.write(self.style.SUCCESS('Successfully triggered Cohort deletion of course deleted groups, '
-                                                 'Total obsolescence cohorts: {}'.format(total_obsoleted_cohorts)))
+            self.stdout.write(self.style.SUCCESS('Successfully triggered Cohort deletion for course deleted groups'))
