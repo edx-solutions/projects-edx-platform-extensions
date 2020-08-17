@@ -408,14 +408,16 @@ class ProjectsViewSet(SecureModelViewSet):
             errors['not_ta_access'] = list(not_ta_access)
 
         groups = request.data.get('groups', [])
-        existing = Workgroup.objects.filter(name__in=groups, project=project).values_list('name', flat=True)
+        existing = Workgroup.objects.filter(name__in=groups, project=project).values_list('name', 'id')
+        existing = dict(existing)
         non_existing_groups = set(groups) - set(existing)
         if non_existing_groups:
             errors['non_existing_groups'] = list(non_existing_groups)
 
         if errors:
             return Response(errors, status=status.HTTP_400_BAD_REQUEST)
-        return Response(errors, status=status.HTTP_200_OK)
+
+        return Response(existing, status=status.HTTP_200_OK)
 
     @detail_route(methods=['post'])
     @method_decorator(transaction.non_atomic_requests)
