@@ -426,16 +426,15 @@ class ProjectsViewSet(SecureModelViewSet):
         if not self.project:
             return Response({}, status=status.HTTP_404_NOT_FOUND)
 
-        errors = {}
-        self.course_key = get_course_key(self.project.course_id)
-        self.groups = request.data.get('groups', {})
-
         existing_submissions = WorkgroupSubmission.objects.filter(
-            workgroup__name__in=list(self.groups),
             workgroup__project=self.project
         ).values_list('workgroup__name', flat=True)
         if existing_submissions:
-            errors['existing_submissions'] = list(set(existing_submissions))
+            return Response({'existing_submissions': existing_submissions}, status=status.HTTP_400_BAD_REQUEST)
+
+        errors = {}
+        self.course_key = get_course_key(self.project.course_id)
+        self.groups = request.data.get('groups', {})
 
         users = sum(list(self.groups.values()), [])
         users = [u.lower() for u in users]
