@@ -33,7 +33,7 @@ from xmodule.modulestore.django import modulestore
 from openedx.core.djangoapps.course_groups.cohorts import (
     add_cohort, add_user_to_cohort, get_cohort_by_name, remove_user_from_cohort,
 )
-from student.models import CourseEnrollment
+from student.models import CourseEnrollment, AnonymousUserId
 from student.roles import CourseAccessRole, CourseAssistantRole
 
 from .models import Project, Workgroup, WorkgroupSubmission, WorkgroupUser
@@ -358,6 +358,25 @@ class ProjectsViewSet(SecureModelViewSet):
             queryset = queryset.filter(content_id=target_content_id, course_id=target_course_id)
 
         return queryset
+
+    @detail_route(methods=['get'])
+    def workgroup_reviews(self, request, pk):
+        """
+        View Workgroup Reviews for a specific Workgroup
+        """
+        workgroup_reviews = WorkgroupReview.objects.filter(workgroup__project=pk)
+        serializer = WorkgroupReviewSerializer(workgroup_reviews, context={'request': request}, many=True)
+        reviews = serializer.data
+        users = dict(AnonymousUserId.objects.filter(
+            anonymous_user_id__in=[w.reviewer for w in workgroup_reviews]
+        ).values_list('anonymous_user_id', 'user__email'))
+        groups = dict(Workgroup.objects.filter(
+            id__in=[w.workgroup_id for w in workgroup_reviews]
+        ).values_list('id', 'name'))
+        for review in reviews:
+            review['reviewer_email'] = users.get(review['reviewer'], review['reviewer'])
+            review['workgroup_name'] = groups.get(review['workgroup'], review['workgroup'])
+        return Response(reviews, status=status.HTTP_200_OK)
 
     @detail_route(methods=['get', 'post'])
     def workgroups(self, request, pk):
