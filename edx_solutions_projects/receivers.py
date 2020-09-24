@@ -3,11 +3,9 @@ Signal handlers supporting various gradebook use cases
 """
 from django.db.models.signals import post_delete, pre_delete
 from django.dispatch import receiver
-
-from xmodule.modulestore.django import SignalHandler
-
 from edx_solutions_projects import models
 from edx_solutions_projects.models import WorkgroupSubmission, WorkgroupUser
+from xmodule.modulestore.django import SignalHandler
 
 
 @receiver(SignalHandler.course_deleted)
@@ -18,7 +16,7 @@ def on_course_deleted(sender, **kwargs):  # pylint: disable=W0613
     """
     course_key = kwargs.get('course_key')
     if course_key:
-        projects = models.Project.objects.filter(course_id=unicode(course_key))
+        projects = models.Project.objects.filter(course_id=str(course_key))
         for project in projects:
             workgroups = models.Workgroup.objects.filter(project=project)
             for workgroup in workgroups:

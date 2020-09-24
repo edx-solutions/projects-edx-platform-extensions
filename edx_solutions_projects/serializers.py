@@ -1,13 +1,12 @@
 """ Django REST Framework Serializers """
 
 from django.contrib.auth.models import User
-
-from rest_framework import serializers
-
 from edx_solutions_api_integration.groups.serializers import GroupSerializer
 from edx_solutions_organizations.models import Organization
-from .models import Project, Workgroup, WorkgroupSubmission
-from .models import WorkgroupReview, WorkgroupSubmissionReview, WorkgroupPeerReview
+from rest_framework import serializers
+
+from .models import (Project, Workgroup, WorkgroupPeerReview, WorkgroupReview,
+                     WorkgroupSubmission, WorkgroupSubmissionReview)
 from .utils import make_temporary_s3_link
 
 
@@ -23,7 +22,7 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
 class ExtendedUserSerializer(serializers.HyperlinkedModelSerializer):
     """ Serializer for model interactions """
 
-    class Meta(object):
+    class Meta:
         """ Meta class for defining additional serializer characteristics """
         model = User
         fields = ('id', 'url', 'username', 'email', 'first_name', 'last_name')
@@ -81,7 +80,7 @@ class WorkgroupSubmissionSerializer(serializers.HyperlinkedModelSerializer):
         """
         Create a temporary S3 link in case of S3 URL
         """
-        response = super(WorkgroupSubmissionSerializer, self).to_representation(instance)
+        response = super().to_representation(instance)
 
         if 's3.amazonaws.com' in response.get('document_url'):
             try:
@@ -163,7 +162,7 @@ class WorkgroupSerializer(serializers.HyperlinkedModelSerializer):
 
 
 class OrganizationSerializer(serializers.HyperlinkedModelSerializer):
-    class Meta(object):
+    class Meta:
         """ Meta class for defining additional serializer characteristics """
         model = Organization
         fields = ('id', 'display_name')
@@ -172,7 +171,7 @@ class OrganizationSerializer(serializers.HyperlinkedModelSerializer):
 class UserDetailsSerializer(serializers.HyperlinkedModelSerializer):
     organizations = OrganizationSerializer(many=True, required=False)
 
-    class Meta(object):
+    class Meta:
         """ Meta class for defining additional serializer characteristics """
         model = User
         fields = ('id', 'url', 'username', 'email', 'first_name', 'last_name', 'organizations')
