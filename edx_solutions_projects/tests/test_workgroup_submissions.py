@@ -6,10 +6,9 @@ Run these tests: paver test_system -s lms -t edx_solutions_projects
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.test import TestCase
-from mock import patch
-
-from edx_solutions_projects.models import Project, Workgroup
 from edx_solutions_api_integration.test_utils import APIClientMixin
+from edx_solutions_projects.models import Project, Workgroup
+from mock import patch
 
 
 class SubmissionsApiTests(TestCase, APIClientMixin):
@@ -17,7 +16,7 @@ class SubmissionsApiTests(TestCase, APIClientMixin):
     """ Test suite for Submissions API views """
 
     def setUp(self):
-        super(SubmissionsApiTests, self).setUp()
+        super().setUp()
         self.test_server_prefix = 'https://testserver'
         self.test_users_uri = '/api/server/users/'
         self.test_workgroups_uri = '/api/server/workgroups/'

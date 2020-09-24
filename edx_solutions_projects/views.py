@@ -4,48 +4,47 @@
 """ WORKGROUPS API VIEWS """
 import re
 
-from django.db.models import Q
-from django.db.models.signals import pre_delete, post_delete
-from edx_solutions_projects.receivers import reassign_or_delete_submissions, delete_empty_workgroup
-
-from .utils import skip_signal
-from django.shortcuts import get_object_or_404
+from courseware.courses import get_course
 from django.contrib.auth.models import Group, User
-from django.db import transaction
-from django.utils.decorators import method_decorator
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.db import transaction
+from django.db.models import Q
+from django.db.models.signals import post_delete, pre_delete
+from django.shortcuts import get_object_or_404
+from django.utils.decorators import method_decorator
+from edx_solutions_api_integration.courseware_access import get_course_key
+from edx_solutions_api_integration.permissions import SecureModelViewSet
+from edx_solutions_projects.receivers import (delete_empty_workgroup,
+                                              reassign_or_delete_submissions)
 from eventtracking import tracker
-
-from rest_framework.decorators import detail_route, list_route
-from rest_framework import status
-from rest_framework.response import Response
-
 from lms.djangoapps.courseware import courses
 from lms.djangoapps.grades.signals.signals import SCORE_PUBLISHED
-from openedx.core.djangoapps.course_groups.models import CourseCohort, CourseUserGroup, CohortMembership
-
-from edx_solutions_api_integration.permissions import SecureModelViewSet
-from edx_solutions_api_integration.courseware_access import get_course_key
-from courseware.courses import get_course
-from opaque_keys.edx.keys import UsageKey
 from opaque_keys import InvalidKeyError
-from xmodule.modulestore.django import modulestore
+from opaque_keys.edx.keys import UsageKey
 from openedx.core.djangoapps.course_groups.cohorts import (
-    add_cohort, add_user_to_cohort, get_cohort_by_name, remove_user_from_cohort,
-)
+    add_cohort, add_user_to_cohort, get_cohort_by_name,
+    remove_user_from_cohort)
+from openedx.core.djangoapps.course_groups.models import (CohortMembership,
+                                                          CourseCohort,
+                                                          CourseUserGroup)
+from rest_framework import status
+from rest_framework.decorators import detail_route, list_route
+from rest_framework.response import Response
 from student.models import CourseEnrollment, AnonymousUserId
 from student.roles import CourseAccessRole, CourseAssistantRole
+from xmodule.modulestore.django import modulestore
 
-from .models import Project, Workgroup, WorkgroupSubmission, WorkgroupUser
-from .models import WorkgroupReview, WorkgroupSubmissionReview, WorkgroupPeerReview
-from .serializers import UserSerializer, GroupSerializer, WorkgroupDetailsSerializer
-from .serializers import (
-    ProjectSerializer,
-    WorkgroupSerializer,
-    WorkgroupSubmissionSerializer,
-    WorkgroupSubmissionBaseSerializer,
-)
-from .serializers import WorkgroupReviewSerializer, WorkgroupSubmissionReviewSerializer, WorkgroupPeerReviewSerializer
+from .models import (Project, Workgroup, WorkgroupPeerReview, WorkgroupReview,
+                     WorkgroupSubmission, WorkgroupSubmissionReview,
+                     WorkgroupUser)
+from .serializers import (GroupSerializer, ProjectSerializer, UserSerializer,
+                          WorkgroupDetailsSerializer,
+                          WorkgroupPeerReviewSerializer,
+                          WorkgroupReviewSerializer, WorkgroupSerializer,
+                          WorkgroupSubmissionReviewSerializer,
+                          WorkgroupSubmissionSerializer,
+                          WorkgroupSubmissionBaseSerializer)
+from .utils import skip_signal
 
 
 class GroupViewSet(SecureModelViewSet):
@@ -79,10 +78,10 @@ class WorkgroupsViewSet(SecureModelViewSet):
         Create a new workgroup and its cohort.
         """
         assignment_type = request.data.get('assignment_type', CourseCohort.RANDOM)
-        if assignment_type not in dict(CourseCohort.ASSIGNMENT_TYPE_CHOICES).keys():
+        if assignment_type not in list(dict(CourseCohort.ASSIGNMENT_TYPE_CHOICES).keys()):
             message = "Not a valid assignment type, '{}'".format(assignment_type)
             return Response({'details': message}, status.HTTP_400_BAD_REQUEST)
-        response = super(WorkgroupsViewSet, self).create(request)
+        response = super().create(request)
         if response.status_code == status.HTTP_201_CREATED:
             # create the workgroup cohort
             workgroup = get_object_or_404(self.queryset, pk=response.data['id'])
@@ -98,7 +97,7 @@ class WorkgroupsViewSet(SecureModelViewSet):
         work_group = self.get_object()
         course_key = get_course_key(work_group.project.course_id)
         cohort = get_cohort_by_name(course_key, work_group.cohort_name)
-        response = super(WorkgroupsViewSet, self).destroy(request, pk)
+        response = super().destroy(request, pk)
         if response.status_code == status.HTTP_204_NO_CONTENT:
             cohort.delete()
         return response
@@ -161,7 +160,7 @@ class WorkgroupsViewSet(SecureModelViewSet):
             try:
                 workgroup.add_user(user)
             except ValidationError as e:
-                return Response({"detail": unicode(e)}, status.HTTP_400_BAD_REQUEST)
+                return Response({"detail": str(e)}, status.HTTP_400_BAD_REQUEST)
 
             workgroup.save()
 
@@ -175,7 +174,7 @@ class WorkgroupsViewSet(SecureModelViewSet):
                 # This use case handles cases where a workgroup might have been created before
                 # the notion of a cohorted discussion. So we need to backfill in the data
                 assignment_type = request.data.get('assignment_type', CourseCohort.RANDOM)
-                if assignment_type not in dict(CourseCohort.ASSIGNMENT_TYPE_CHOICES).keys():
+                if assignment_type not in list(dict(CourseCohort.ASSIGNMENT_TYPE_CHOICES).keys()):
                     message = "Not a valid assignment type, '{}'".format(assignment_type)
                     return Response({"detail": message}, status.HTTP_400_BAD_REQUEST)
                 workgroup = self.get_object()
@@ -348,7 +347,7 @@ class ProjectsViewSet(SecureModelViewSet):
             message = "Both course_id and content_id should be present for filtering"
             return Response({"detail": message}, status.HTTP_400_BAD_REQUEST)
 
-        return super(ProjectsViewSet, self).list(request, *args, **kwargs)
+        return super().list(request, *args, **kwargs)
 
     def get_queryset(self):
         """

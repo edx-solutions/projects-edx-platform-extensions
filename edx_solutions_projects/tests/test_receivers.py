@@ -2,20 +2,17 @@
 """
 Run these tests: paver test_system -s lms -t edx_solutions_projects
 """
-from datetime import datetime
 import uuid
-import pytz
+from datetime import datetime
 
+import pytz
 from django.conf import settings
 from django.test.utils import override_settings
-from xmodule.modulestore.tests.django_utils import (
-    ModuleStoreTestCase,
-    TEST_DATA_SPLIT_MODULESTORE
-)
-from xmodule.modulestore.tests.factories import CourseFactory, ItemFactory
-
-from xmodule.modulestore.django import SignalHandler
 from edx_solutions_projects import models
+from xmodule.modulestore.django import SignalHandler
+from xmodule.modulestore.tests.django_utils import (
+    TEST_DATA_SPLIT_MODULESTORE, ModuleStoreTestCase)
+from xmodule.modulestore.tests.factories import CourseFactory, ItemFactory
 
 
 class ProjectsReceiversTests(ModuleStoreTestCase):
@@ -25,7 +22,7 @@ class ProjectsReceiversTests(ModuleStoreTestCase):
     ENABLED_SIGNALS = ['course_deleted']
 
     def setUp(self):
-        super(ProjectsReceiversTests, self).setUp()
+        super().setUp()
         # Create a course to work with
         self.course = CourseFactory.create(
             start=datetime(2014, 6, 16, 14, 30, tzinfo=pytz.UTC),
@@ -42,8 +39,8 @@ class ProjectsReceiversTests(ModuleStoreTestCase):
 
     def test_receiver_on_course_deleted(self):
         project = models.Project.objects.create(
-            course_id=unicode(self.course.id),
-            content_id=unicode(self.chapter.location)
+            course_id=str(self.course.id),
+            content_id=str(self.chapter.location)
         )
         workgroup = models.Workgroup.objects.create(
             project=project,
@@ -58,7 +55,7 @@ class ProjectsReceiversTests(ModuleStoreTestCase):
             reviewer=self.user,
             question='test',
             answer='test',
-            content_id=unicode(self.chapter.location),
+            content_id=str(self.chapter.location),
         )
         workgroup_peer_review = models.WorkgroupPeerReview.objects.create(
             workgroup=workgroup,
@@ -66,7 +63,7 @@ class ProjectsReceiversTests(ModuleStoreTestCase):
             reviewer=self.user,
             question='test',
             answer='test',
-            content_id=unicode(self.chapter.location),
+            content_id=str(self.chapter.location),
         )
         workgroup_submission = models.WorkgroupSubmission.objects.create(
             workgroup=workgroup,
@@ -80,7 +77,7 @@ class ProjectsReceiversTests(ModuleStoreTestCase):
             reviewer=self.user,
             question='test',
             answer='test',
-            content_id=unicode(self.chapter.location),
+            content_id=str(self.chapter.location),
         )
 
         self.assertEqual(models.Project.objects.filter(id=project.id).count(), 1)

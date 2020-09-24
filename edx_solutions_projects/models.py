@@ -1,14 +1,11 @@
 """ Database ORM models managed by this Django app """
 
-from six.moves.urllib_parse import urlparse
-from urllib import unquote
+from urllib.parse import unquote, urlparse
 
 from django.contrib.auth.models import Group, User
-from django.db import models
 from django.core.exceptions import ValidationError
 from django.core.files.storage import default_storage
-
-
+from django.db import models
 from model_utils.models import TimeStampedModel
 
 
@@ -112,7 +109,7 @@ class WorkgroupUser(models.Model):
 
     def save(self, **kwargs):
         self.clean()
-        return super(WorkgroupUser, self).save(**kwargs)
+        return super().save(**kwargs)
 
 
 class WorkgroupReview(TimeStampedModel):

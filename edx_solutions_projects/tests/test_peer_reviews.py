@@ -4,22 +4,19 @@
 Run these tests: paver test_system -s lms -t edx_solutions_projects
 """
 import uuid
-import ddt
 
+import ddt
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.test.utils import override_settings
-
+from edx_solutions_api_integration.test_utils import APIClientMixin
 from edx_solutions_projects.models import Project, Workgroup
 from student.models import anonymous_id_for_user
 from xmodule.modulestore import ModuleStoreEnum
 from xmodule.modulestore.tests.django_utils import (
-    ModuleStoreTestCase,
-    TEST_DATA_SPLIT_MODULESTORE
-)
+    TEST_DATA_SPLIT_MODULESTORE, ModuleStoreTestCase)
 from xmodule.modulestore.tests.factories import CourseFactory, ItemFactory
-from edx_solutions_api_integration.test_utils import APIClientMixin
 
 
 class PeerReviewsApiTests(ModuleStoreTestCase, APIClientMixin):
@@ -29,7 +26,7 @@ class PeerReviewsApiTests(ModuleStoreTestCase, APIClientMixin):
     MODULESTORE = TEST_DATA_SPLIT_MODULESTORE
 
     def setUp(self):
-        super(PeerReviewsApiTests, self).setUp()
+        super().setUp()
         self.test_server_prefix = 'https://testserver'
         self.test_users_uri = '/api/server/users/'
         self.test_workgroups_uri = '/api/server/workgroups/'
@@ -45,9 +42,9 @@ class PeerReviewsApiTests(ModuleStoreTestCase, APIClientMixin):
             display_name="Overview"
         )
 
-        self.test_course_id = unicode(self.course.id)
+        self.test_course_id = str(self.course.id)
         self.test_bogus_course_id = 'foo/bar/baz'
-        self.test_course_content_id = unicode(self.chapter.scope_ids.usage_id)
+        self.test_course_content_id = str(self.chapter.scope_ids.usage_id)
         self.test_bogus_course_content_id = "14x://foo/bar/baz"
 
         self.test_question = "Does the question data come from the XBlock definition?"
