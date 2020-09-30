@@ -33,7 +33,7 @@ class Migration(migrations.Migration):
                 ('modified', model_utils.fields.AutoLastModifiedField(default=django.utils.timezone.now, verbose_name='modified', editable=False)),
                 ('name', models.CharField(max_length=255, null=True, blank=True)),
                 ('groups', models.ManyToManyField(related_name='workgroups', to='auth.Group', blank=True)),
-                ('project', models.ForeignKey(related_name='workgroups', to='edx_solutions_projects.Project')),
+                ('project', models.ForeignKey(related_name='workgroups', to='edx_solutions_projects.Project', on_delete=models.CASCADE)),
             ],
             options={
                 'abstract': False,
@@ -49,8 +49,8 @@ class Migration(migrations.Migration):
                 ('question', models.CharField(max_length=1024)),
                 ('answer', models.TextField()),
                 ('content_id', models.CharField(max_length=255, null=True, blank=True)),
-                ('user', models.ForeignKey(related_name='workgroup_peer_reviewees', to=settings.AUTH_USER_MODEL)),
-                ('workgroup', models.ForeignKey(related_name='peer_reviews', to='edx_solutions_projects.Workgroup')),
+                ('user', models.ForeignKey(related_name='workgroup_peer_reviewees', to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE)),
+                ('workgroup', models.ForeignKey(related_name='peer_reviews', to='edx_solutions_projects.Workgroup', on_delete=models.CASCADE)),
             ],
             options={
                 'abstract': False,
@@ -66,7 +66,7 @@ class Migration(migrations.Migration):
                 ('question', models.CharField(max_length=1024)),
                 ('answer', models.TextField()),
                 ('content_id', models.CharField(max_length=255, null=True, blank=True)),
-                ('workgroup', models.ForeignKey(related_name='workgroup_reviews', to='edx_solutions_projects.Workgroup')),
+                ('workgroup', models.ForeignKey(related_name='workgroup_reviews', to='edx_solutions_projects.Workgroup', on_delete=models.CASCADE)),
             ],
             options={
                 'abstract': False,
@@ -82,8 +82,8 @@ class Migration(migrations.Migration):
                 ('document_url', models.CharField(max_length=2048)),
                 ('document_mime_type', models.CharField(max_length=255)),
                 ('document_filename', models.CharField(max_length=255, null=True, blank=True)),
-                ('user', models.ForeignKey(related_name='submissions', to=settings.AUTH_USER_MODEL)),
-                ('workgroup', models.ForeignKey(related_name='submissions', to='edx_solutions_projects.Workgroup')),
+                ('user', models.ForeignKey(related_name='submissions', to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE)),
+                ('workgroup', models.ForeignKey(related_name='submissions', to='edx_solutions_projects.Workgroup', on_delete=models.CASCADE)),
             ],
             options={
                 'abstract': False,
@@ -99,7 +99,7 @@ class Migration(migrations.Migration):
                 ('question', models.CharField(max_length=1024)),
                 ('answer', models.TextField()),
                 ('content_id', models.CharField(max_length=255, null=True, blank=True)),
-                ('submission', models.ForeignKey(related_name='reviews', to='edx_solutions_projects.WorkgroupSubmission')),
+                ('submission', models.ForeignKey(related_name='reviews', to='edx_solutions_projects.WorkgroupSubmission', on_delete=models.CASCADE)),
             ],
             options={
                 'abstract': False,
@@ -109,8 +109,8 @@ class Migration(migrations.Migration):
             name='WorkgroupUser',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('user', models.ForeignKey(to=settings.AUTH_USER_MODEL)),
-                ('workgroup', models.ForeignKey(to='edx_solutions_projects.Workgroup')),
+                ('user', models.ForeignKey(to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE)),
+                ('workgroup', models.ForeignKey(to='edx_solutions_projects.Workgroup', on_delete=models.CASCADE)),
             ],
             options={
                 'db_table': 'edx_solutions_projects_workgroup_users',
