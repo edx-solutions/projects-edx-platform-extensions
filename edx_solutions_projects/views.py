@@ -4,7 +4,7 @@
 """ WORKGROUPS API VIEWS """
 import re
 
-from courseware.courses import get_course
+from lms.djangoapps.courseware.courses import get_course
 from django.contrib.auth.models import Group, User
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import transaction
