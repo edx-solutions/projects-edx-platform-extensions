@@ -62,11 +62,10 @@ class ProjectSerializer(serializers.HyperlinkedModelSerializer):
         validators = []
 
 
-class WorkgroupSubmissionSerializer(serializers.HyperlinkedModelSerializer):
+class WorkgroupSubmissionBaseSerializer(serializers.HyperlinkedModelSerializer):
     """ Serializer for model interactions """
     user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
     workgroup = serializers.PrimaryKeyRelatedField(queryset=Workgroup.objects.all())
-    reviews = serializers.PrimaryKeyRelatedField(many=True, queryset=WorkgroupReview.objects.all(), required=False)
 
     class Meta:
         """ Meta class for defining additional serializer characteristics """
@@ -74,14 +73,14 @@ class WorkgroupSubmissionSerializer(serializers.HyperlinkedModelSerializer):
         fields = (
             'id', 'url', 'created', 'modified', 'document_id', 'document_url',
             'document_mime_type', 'document_filename',
-            'user', 'workgroup', 'reviews'
+            'user', 'workgroup',
         )
 
     def to_representation(self, instance):
         """
         Create a temporary S3 link in case of S3 URL
         """
-        response = super(WorkgroupSubmissionSerializer, self).to_representation(instance)
+        response = super(WorkgroupSubmissionBaseSerializer, self).to_representation(instance)
 
         if 's3.amazonaws.com' in response.get('document_url'):
             try:
@@ -101,6 +100,20 @@ class WorkgroupSubmissionSerializer(serializers.HyperlinkedModelSerializer):
                 response['document_url'] = temp_s3_link
 
         return response
+
+
+class WorkgroupSubmissionSerializer(WorkgroupSubmissionBaseSerializer):
+    """ Serializer for model interactions """
+    reviews = serializers.PrimaryKeyRelatedField(many=True, queryset=WorkgroupReview.objects.all(), required=False)
+
+    class Meta:
+        """ Meta class for defining additional serializer characteristics """
+        model = WorkgroupSubmission
+        fields = (
+            'id', 'url', 'created', 'modified', 'document_id', 'document_url',
+            'document_mime_type', 'document_filename',
+            'user', 'workgroup', 'reviews'
+        )
 
 
 class WorkgroupReviewSerializer(serializers.HyperlinkedModelSerializer):

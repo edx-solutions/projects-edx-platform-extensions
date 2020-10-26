@@ -39,7 +39,12 @@ from student.roles import CourseAccessRole, CourseAssistantRole
 from .models import Project, Workgroup, WorkgroupSubmission, WorkgroupUser
 from .models import WorkgroupReview, WorkgroupSubmissionReview, WorkgroupPeerReview
 from .serializers import UserSerializer, GroupSerializer, WorkgroupDetailsSerializer
-from .serializers import ProjectSerializer, WorkgroupSerializer, WorkgroupSubmissionSerializer
+from .serializers import (
+    ProjectSerializer,
+    WorkgroupSerializer,
+    WorkgroupSubmissionSerializer,
+    WorkgroupSubmissionBaseSerializer,
+)
 from .serializers import WorkgroupReviewSerializer, WorkgroupSubmissionReviewSerializer, WorkgroupPeerReviewSerializer
 
 
@@ -631,6 +636,28 @@ class WorkgroupSubmissionsViewSet(SecureModelViewSet):
     """
     serializer_class = WorkgroupSubmissionSerializer
     queryset = WorkgroupSubmission.objects.all()
+
+    @list_route(methods=['post'])
+    def by_workgroups_and_users(self, request):
+        """
+        View Submissions submitted by specific Workgroups and Users
+        """
+        user_ids = request.data.get('user_ids')
+        workgroup_ids = request.data.get('workgroup_ids')
+        submissions = self.queryset
+
+        if workgroup_ids:
+            submissions = self.queryset.filter(workgroup__in=workgroup_ids)
+
+        if user_ids:
+            submissions = submissions.filter(user__in=user_ids)
+
+        response_data = []
+        for submission in submissions:
+            serializer = WorkgroupSubmissionBaseSerializer(submission, context={'request': request})
+            response_data.append(serializer.data)  # pylint: disable=E1101
+
+        return Response(response_data, status=status.HTTP_200_OK)
 
 
 class WorkgroupReviewsViewSet(SecureModelViewSet):
