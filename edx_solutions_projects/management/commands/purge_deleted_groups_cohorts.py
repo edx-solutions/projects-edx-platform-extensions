@@ -1,8 +1,6 @@
 from django.core.management.base import BaseCommand
-
 from edx_solutions_api_integration.courseware_access import get_course_key
 from edx_solutions_projects.models import Workgroup
-
 from openedx.core.djangoapps.course_groups.models import CourseUserGroup
 
 

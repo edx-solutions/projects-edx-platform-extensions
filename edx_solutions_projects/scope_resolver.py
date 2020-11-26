@@ -5,6 +5,7 @@ A User Scope Resolver that can be used by edx-notifications
 import logging
 
 from edx_notifications.scopes import NotificationUserScopeResolver
+
 from .models import Project, Workgroup
 
 log = logging.getLogger(__name__)
