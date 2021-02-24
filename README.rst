@@ -1,6 +1,9 @@
 projects-edx-platform-extensions
 ================================
 
+Notice: This repo will be archived in April 2021.
+#######
+
 projects-edx-platform-extensions (``edx_solutions_projects``) is a Django application responsible for managing the concept of Projects in the Open edX platform. Projects are an intersection of Courses, CourseContent, and Workgroups. Projects application depends on organizations application so organizations application should be installed before installing edx_solutions_projects application.
 
 
