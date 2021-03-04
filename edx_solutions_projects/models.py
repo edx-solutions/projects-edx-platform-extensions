@@ -1,14 +1,11 @@
 """ Database ORM models managed by this Django app """
 
-from six.moves.urllib_parse import urlparse
-from urllib import unquote
+from urllib.parse import unquote, urlparse
 
 from django.contrib.auth.models import Group, User
-from django.db import models
 from django.core.exceptions import ValidationError
 from django.core.files.storage import default_storage
-
-
+from django.db import models
 from model_utils.models import TimeStampedModel
 
 
@@ -53,7 +50,7 @@ class Workgroup(TimeStampedModel):
     related to other Groups.
     """
     name = models.CharField(max_length=255, null=True, blank=True)
-    project = models.ForeignKey(Project, related_name="workgroups")
+    project = models.ForeignKey(Project, related_name="workgroups", on_delete=models.CASCADE)
     users = models.ManyToManyField(User, related_name="workgroups", through="WorkgroupUser", blank=True)
     groups = models.ManyToManyField(Group, related_name="workgroups", blank=True)
 
@@ -98,8 +95,8 @@ class Workgroup(TimeStampedModel):
 class WorkgroupUser(models.Model):
     """A Folder to store some data between a client and its insurance"""
 
-    workgroup = models.ForeignKey(Workgroup, null=False)
-    user = models.ForeignKey(User, null=False)
+    workgroup = models.ForeignKey(Workgroup, null=False, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, null=False, on_delete=models.CASCADE)
 
     class Meta:
         db_table = 'edx_solutions_projects_workgroup_users'
@@ -112,7 +109,7 @@ class WorkgroupUser(models.Model):
 
     def save(self, **kwargs):
         self.clean()
-        return super(WorkgroupUser, self).save(**kwargs)
+        return super().save(**kwargs)
 
 
 class WorkgroupReview(TimeStampedModel):
@@ -122,7 +119,7 @@ class WorkgroupReview(TimeStampedModel):
     context of a specific Project, as defined in the Group Project XBlock
     schema.  There can be more than one Project Review entry for a given Project.
     """
-    workgroup = models.ForeignKey(Workgroup, related_name="workgroup_reviews")
+    workgroup = models.ForeignKey(Workgroup, related_name="workgroup_reviews", on_delete=models.CASCADE)
     reviewer = models.CharField(max_length=255)  # AnonymousUserId
     question = models.CharField(max_length=1024)
     answer = models.TextField()
@@ -135,7 +132,7 @@ class WorkgroupSubmission(TimeStampedModel):
     created by the Users in a Workgroup.  The document fields are defined by the
     'Group Project' XBlock and data for a specific instance is persisted here
     """
-    workgroup = models.ForeignKey(Workgroup, related_name="submissions")
+    workgroup = models.ForeignKey(Workgroup, related_name="submissions", on_delete=models.CASCADE)
     user = models.ForeignKey(User, related_name="submissions", on_delete=models.DO_NOTHING)
     document_id = models.CharField(max_length=255)
     document_url = models.CharField(max_length=2048)
@@ -163,7 +160,7 @@ class WorkgroupSubmissionReview(TimeStampedModel):
     defined in the Group Project XBlock schema.  There can be more than one
     Submission Review entry for a given Submission.
     """
-    submission = models.ForeignKey(WorkgroupSubmission, related_name="reviews")
+    submission = models.ForeignKey(WorkgroupSubmission, related_name="reviews", on_delete=models.CASCADE)
     reviewer = models.CharField(max_length=255)  # AnonymousUserId
     question = models.CharField(max_length=1024)
     answer = models.TextField()
@@ -176,8 +173,8 @@ class WorkgroupPeerReview(TimeStampedModel):
     specific question/answer defined in the Group Project XBlock schema.  There
     can be more than one Peer Review entry for a given User.
     """
-    workgroup = models.ForeignKey(Workgroup, related_name="peer_reviews")
-    user = models.ForeignKey(User, related_name="workgroup_peer_reviewees")
+    workgroup = models.ForeignKey(Workgroup, related_name="peer_reviews", on_delete=models.CASCADE)
+    user = models.ForeignKey(User, related_name="workgroup_peer_reviewees", on_delete=models.CASCADE)
     reviewer = models.CharField(max_length=255)  # AnonymousUserId
     question = models.CharField(max_length=1024)
     answer = models.TextField()
