@@ -8,10 +8,9 @@ import uuid
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.test import TestCase
-
+from edx_solutions_api_integration.test_utils import APIClientMixin
 from edx_solutions_projects.models import Project, Workgroup
 from edx_solutions_projects.scope_resolver import GroupProjectParticipantsScopeResolver
-from edx_solutions_api_integration.test_utils import APIClientMixin
 
 
 class ProjectsApiTests(TestCase, APIClientMixin):
@@ -19,7 +18,7 @@ class ProjectsApiTests(TestCase, APIClientMixin):
     """ Test suite for Projects API views """
 
     def setUp(self):
-        super(ProjectsApiTests, self).setUp()
+        super().setUp()
         self.test_server_prefix = 'https://testserver'
         self.test_projects_uri = '/api/server/projects/'
         self.test_organizations_uri = '/api/server/organizations/'

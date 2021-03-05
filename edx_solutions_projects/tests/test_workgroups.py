@@ -4,39 +4,29 @@
 Run these tests: paver test_system -s lms -t edx_solutions_projects
 """
 import uuid
-import pytz
-import ddt
-from urllib import urlencode
-from mock import Mock, patch
 from datetime import datetime
+from urllib.parse import urlencode
+
+import ddt
+import pytz
 from django.conf import settings
 from django.contrib.auth.models import Group, User
 from django.core.cache import cache
 from django.test.utils import override_settings
-
 from edx_solutions_api_integration.models import GroupProfile
-from xmodule.modulestore.tests.django_utils import ModuleStoreEnum
+from edx_solutions_api_integration.test_utils import (
+    APIClientMixin, CourseGradingMixin, SignalDisconnectTestMixin,
+    make_non_atomic)
+from edx_solutions_projects.models import Project, Workgroup
+from mock import Mock, patch
+from openedx.core.djangoapps.course_groups.cohorts import (
+    delete_empty_cohort, get_cohort_by_name, get_course_cohort_names,
+    is_user_in_cohort, remove_user_from_cohort)
+from student.tests.factories import CourseEnrollmentFactory, UserFactory
 from xmodule.modulestore.django import modulestore
 from xmodule.modulestore.tests.django_utils import (
-    ModuleStoreTestCase,
-    TEST_DATA_SPLIT_MODULESTORE
-)
-from edx_solutions_projects.models import Project, Workgroup
-from student.tests.factories import CourseEnrollmentFactory, UserFactory
+    TEST_DATA_SPLIT_MODULESTORE, ModuleStoreEnum, ModuleStoreTestCase)
 from xmodule.modulestore.tests.factories import CourseFactory, ItemFactory
-from edx_solutions_api_integration.test_utils import (
-    APIClientMixin,
-    SignalDisconnectTestMixin,
-    make_non_atomic,
-    CourseGradingMixin,
-)
-from openedx.core.djangoapps.course_groups.cohorts import (
-    get_cohort_by_name,
-    remove_user_from_cohort,
-    delete_empty_cohort,
-    is_user_in_cohort,
-    get_course_cohort_names,
-)
 
 
 @ddt.ddt
@@ -47,7 +37,7 @@ class WorkgroupsApiTests(SignalDisconnectTestMixin, ModuleStoreTestCase, APIClie
     MODULESTORE = TEST_DATA_SPLIT_MODULESTORE
 
     def setUp(self):
-        super(WorkgroupsApiTests, self).setUp()
+        super().setUp()
         self.test_server_prefix = 'https://testserver'
         self.test_workgroups_uri = '/api/server/workgroups/'
         self.test_submissions_uri = '/api/server/submissions/'
@@ -88,9 +78,9 @@ class WorkgroupsApiTests(SignalDisconnectTestMixin, ModuleStoreTestCase, APIClie
                 display_name="Group Project"
             )
 
-            self.test_course_id = unicode(self.test_course.id)
+            self.test_course_id = str(self.test_course.id)
 
-            self.test_course_content_id = unicode(self.test_group_project.scope_ids.usage_id)
+            self.test_course_content_id = str(self.test_group_project.scope_ids.usage_id)
 
             self.test_group_name = str(uuid.uuid4())
             self.test_group = Group.objects.create(
@@ -109,7 +99,7 @@ class WorkgroupsApiTests(SignalDisconnectTestMixin, ModuleStoreTestCase, APIClie
 
             self.test_project2 = Project.objects.create(
                 course_id=self.test_course_id,
-                content_id=unicode(self.test_group_project.scope_ids.usage_id)
+                content_id=str(self.test_group_project.scope_ids.usage_id)
             )
 
             self.test_user_email = str(uuid.uuid4())
@@ -632,7 +622,7 @@ class WorkgroupsGradesApiTests(SignalDisconnectTestMixin, ModuleStoreTestCase, A
     MODULESTORE = TEST_DATA_SPLIT_MODULESTORE
 
     def setUp(self):
-        super(WorkgroupsGradesApiTests, self).setUp()
+        super().setUp()
         self.test_server_prefix = 'https://testserver'
         self.test_workgroups_uri = '/api/server/workgroups/'
         self.test_courses_uri = '/api/server/courses'
@@ -647,8 +637,8 @@ class WorkgroupsGradesApiTests(SignalDisconnectTestMixin, ModuleStoreTestCase, A
             display_name="Group Project"
         )
 
-        self.test_course_id = unicode(self.test_course.id)
-        self.test_course_content_id = unicode(self.test_group_project.scope_ids.usage_id)
+        self.test_course_id = str(self.test_course.id)
+        self.test_course_content_id = str(self.test_group_project.scope_ids.usage_id)
         self.test_workgroup_name = str(uuid.uuid4())
         self.test_project = Project.objects.create(
             course_id=self.test_course_id,

@@ -4,6 +4,7 @@ created due to an issue in xblock-group-project-v2 before v0.4.9 where it would
 upload the image component of anything copied into the clipboard.
 """
 import logging
+
 from django.core.management.base import BaseCommand
 from edx_solutions_projects.models import WorkgroupSubmission
 
@@ -20,7 +21,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         log.info('Deleting workgroup submissions containing a document called "image.png"')
 
-        choice = raw_input('Are you sure? [yn]').lower()
+        choice = input('Are you sure? [yn]').lower()
         if choice == 'y' or choice == 'yes':
             WorkgroupSubmission.objects.filter(
                 document_filename='image.png',
